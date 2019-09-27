@@ -20,6 +20,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// CustomPodAutoscalerConfig defines the configuration options that can be passed to the CustomPodAutoscaler
+// +k8s:openapi-gen=true
 type CustomPodAutoscalerConfig struct {
 	Name  string `json:"name"`
 	Value string `json:"value"`
@@ -48,6 +50,7 @@ type CustomPodAutoscalerStatus struct {
 // +k8s:openapi-gen=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:shortName=cpa
+// +groupName=custompodautoscaler.com
 type CustomPodAutoscaler struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

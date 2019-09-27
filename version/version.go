@@ -17,5 +17,6 @@ limitations under the License.
 package version
 
 var (
+	// Version defines operator version
 	Version = "0.0.1"
 )
