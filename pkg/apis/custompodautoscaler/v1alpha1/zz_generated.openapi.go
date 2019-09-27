@@ -27,6 +27,7 @@ import (
 func GetOpenAPIDefinitions(ref common.ReferenceCallback) map[string]common.OpenAPIDefinition {
 	return map[string]common.OpenAPIDefinition{
 		"./pkg/apis/custompodautoscaler/v1alpha1.CustomPodAutoscaler":       schema_pkg_apis_custompodautoscaler_v1alpha1_CustomPodAutoscaler(ref),
+		"./pkg/apis/custompodautoscaler/v1alpha1.CustomPodAutoscalerConfig": schema_pkg_apis_custompodautoscaler_v1alpha1_CustomPodAutoscalerConfig(ref),
 		"./pkg/apis/custompodautoscaler/v1alpha1.CustomPodAutoscalerSpec":   schema_pkg_apis_custompodautoscaler_v1alpha1_CustomPodAutoscalerSpec(ref),
 		"./pkg/apis/custompodautoscaler/v1alpha1.CustomPodAutoscalerStatus": schema_pkg_apis_custompodautoscaler_v1alpha1_CustomPodAutoscalerStatus(ref),
 	}
@@ -72,6 +73,32 @@ func schema_pkg_apis_custompodautoscaler_v1alpha1_CustomPodAutoscaler(ref common
 		},
 		Dependencies: []string{
 			"./pkg/apis/custompodautoscaler/v1alpha1.CustomPodAutoscalerSpec", "./pkg/apis/custompodautoscaler/v1alpha1.CustomPodAutoscalerStatus", "k8s.io/apimachinery/pkg/apis/meta/v1.ObjectMeta"},
+	}
+}
+
+func schema_pkg_apis_custompodautoscaler_v1alpha1_CustomPodAutoscalerConfig(ref common.ReferenceCallback) common.OpenAPIDefinition {
+	return common.OpenAPIDefinition{
+		Schema: spec.Schema{
+			SchemaProps: spec.SchemaProps{
+				Description: "CustomPodAutoscalerConfig defines the configuration options that can be passed to the CustomPodAutoscaler",
+				Properties: map[string]spec.Schema{
+					"name": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+					"value": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"string"},
+							Format: "",
+						},
+					},
+				},
+				Required: []string{"name", "value"},
+			},
+		},
+		Dependencies: []string{},
 	}
 }
 

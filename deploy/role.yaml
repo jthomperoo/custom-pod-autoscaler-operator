@@ -60,7 +60,7 @@ rules:
   verbs:
   - '*'
 - apiGroups:
-  - custom-pod-autoscaler.com
+  - custompodautoscaler.com
   resources:
   - '*'
   verbs:
