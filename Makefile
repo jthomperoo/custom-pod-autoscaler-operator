@@ -10,7 +10,6 @@ lint:
 	@echo "=============Linting============="
 	find . -name '*.go' | grep -v zz_generated | golint -set_exit_status
 
-
 generate:
 	@echo "=============Generating boilerplate/yaml============="
 	operator-sdk generate k8s
