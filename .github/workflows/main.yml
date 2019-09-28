@@ -52,7 +52,7 @@ jobs:
         DOCKER_PASS: ${{ secrets.DOCKER_PASS }}
       if: github.event_name != 'pull_request' && github.repository == 'jthomperoo/custom-pod-autoscaler-operator'
       run: |
-        docker login --username=$DOCKER_USER --password=$DOCKER_PASS
+        echo "$DOCKER_PASS" | docker login --username=$DOCKER_USER --password-stdin
         if [ ${{ github.event_name }} == "release" ]; then
           # This needs to be determined again, due to env vars not being shared between steps
           # https://github.com/actions/starter-workflows/issues/68
@@ -63,3 +63,15 @@ jobs:
         else
           docker push custompodautoscaler/operator:$(git rev-parse --short ${{ github.sha }})
         fi
+
+    - name: Bundle YAML config
+      if: github.event_name == 'release' && github.repository == 'jthomperoo/custom-pod-autoscaler-operator'
+      run: tar -czvf deploy.tar.gz deploy/*
+
+    - name: Deploy YAML config
+      if: github.event_name == 'release' && github.repository == 'jthomperoo/custom-pod-autoscaler-operator'
+      uses: Shopify/upload-to-release@1.0.0
+      with:
+        name: deploy.tar.gz
+        path: deploy.tar.gz
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
