@@ -1,16 +1,12 @@
-# Custom Pod Autoscaler Operator [ALPHA]
-
+# Custom Pod Autoscaler Operator [PRE-RELEASE]
 This is the operator for managing Custom Pod Autoscalers (CPA).
 
 ## Installation
-
-Run these commands to install the operator on a Kubernetes cluster:  
-Pull down configuration  
-`git clone https://github.com/jthomperoo/custom-pod-autoscaler-operator && cd`  
-Deploy Custom Resource Defintion for CPAs.  
-`kubectl apply -f deploy/crds/`  
-Deploy Operator deployment for managing CPAs.  
-`kubectl apply -f deploy/`  
+Run this to install the CPA definition and controller on your cluster:  
+```
+VERSION=0.1.0 
+curl "https://github.com/jthomperoo/custom-pod-autoscaler-operator/releases/download/${VERSION}/deploy.tar.gz" | tar xvz --to-command 'kubectl apply -f -'
+```
 
 ## Developing
 
