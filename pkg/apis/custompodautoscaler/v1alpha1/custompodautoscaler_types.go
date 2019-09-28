@@ -16,7 +16,10 @@ limitations under the License.
 
 package v1alpha1
 
+// Important: Run "make generate" to regenerate code after modifying this file
+
 import (
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -30,18 +33,19 @@ type CustomPodAutoscalerConfig struct {
 // CustomPodAutoscalerSpec defines the desired state of CustomPodAutoscaler
 // +k8s:openapi-gen=true
 type CustomPodAutoscalerSpec struct {
-	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
-	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
-	Image    string                      `json:"image"`
-	Selector string                      `json:"selector,omitempty"`
-	Config   []CustomPodAutoscalerConfig `json:"config,omitempty"`
+	// The image of the Custom Pod Autoscaler
+	Image string `json:"image"`
+	// Selector defining what the Custom Pod Autoscaler should manage
+	Selector string `json:"selector"`
+	// Configuration options to be delivered as environment variables to the container
+	Config []CustomPodAutoscalerConfig `json:"config,omitempty"`
+	// Pull policy for the Custom Pod Autoscaler, default IfNotPresent
+	PullPolicy corev1.PullPolicy `json:"pullPolicy,omitempty"`
 }
 
 // CustomPodAutoscalerStatus defines the observed state of CustomPodAutoscaler
 // +k8s:openapi-gen=true
 type CustomPodAutoscalerStatus struct {
-	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
-	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

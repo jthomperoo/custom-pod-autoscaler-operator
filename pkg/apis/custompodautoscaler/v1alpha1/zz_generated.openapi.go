@@ -110,20 +110,22 @@ func schema_pkg_apis_custompodautoscaler_v1alpha1_CustomPodAutoscalerSpec(ref co
 				Properties: map[string]spec.Schema{
 					"image": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Important: Run \"operator-sdk generate k8s\" to regenerate code after modifying this file Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html",
+							Description: "The image of the Custom Pod Autoscaler",
 							Type:        []string{"string"},
 							Format:      "",
 						},
 					},
 					"selector": {
 						SchemaProps: spec.SchemaProps{
-							Type:   []string{"string"},
-							Format: "",
+							Description: "Selector defining what the Custom Pod Autoscaler should manage",
+							Type:        []string{"string"},
+							Format:      "",
 						},
 					},
 					"config": {
 						SchemaProps: spec.SchemaProps{
-							Type: []string{"array"},
+							Description: "Configuration options to be delivered as environment variables to the container",
+							Type:        []string{"array"},
 							Items: &spec.SchemaOrArray{
 								Schema: &spec.Schema{
 									SchemaProps: spec.SchemaProps{
@@ -133,8 +135,15 @@ func schema_pkg_apis_custompodautoscaler_v1alpha1_CustomPodAutoscalerSpec(ref co
 							},
 						},
 					},
+					"pullPolicy": {
+						SchemaProps: spec.SchemaProps{
+							Description: "Pull policy for the Custom Pod Autoscaler, default IfNotPresent",
+							Type:        []string{"string"},
+							Format:      "",
+						},
+					},
 				},
-				Required: []string{"image"},
+				Required: []string{"image", "selector"},
 			},
 		},
 		Dependencies: []string{
