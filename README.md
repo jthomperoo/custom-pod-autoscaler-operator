@@ -4,13 +4,13 @@ This is the operator for managing Custom Pod Autoscalers (CPA).
 
 ## Installation
 
-Run these commands to install the operator on a Kubernetes cluster:
-Pull down configuration
-`git clone https://github.com/jthomperoo/custom-pod-autoscaler-operator && cd`
-Deploy Custom Resource Defintion for CPAs.
-`kubectl apply -f deploy/crds/`
-Deploy Operator deployment for managing CPAs.
-`kubectl apply -f deploy/`
+Run these commands to install the operator on a Kubernetes cluster:  
+Pull down configuration  
+`git clone https://github.com/jthomperoo/custom-pod-autoscaler-operator && cd`  
+Deploy Custom Resource Defintion for CPAs.  
+`kubectl apply -f deploy/crds/`  
+Deploy Operator deployment for managing CPAs.  
+`kubectl apply -f deploy/`  
 
 ## Developing
 

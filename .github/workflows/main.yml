@@ -39,7 +39,8 @@ jobs:
     - name: Build
       run: |
         if [ ${{ github.event_name }} == "release" ]; then
-          VERSION=${{ github.ref }}
+          # github.ref is in the form refs/tags/VERSION, so apply regex to just get version
+          VERSION=$(echo "${{ github.ref }}" | grep -P '([^\/]+$)' -o) 
         else
           VERSION=$(git rev-parse --short ${{ github.sha }})
         fi
@@ -53,8 +54,11 @@ jobs:
       run: |
         docker login --username=$DOCKER_USER --password=$DOCKER_PASS
         if [ ${{ github.event_name }} == "release" ]; then
-          docker tag custompodautoscaler/operator:${{ github.ref }} custompodautoscaler/operator:latest
-          docker push custompodautoscaler/operator:${{ github.ref }}
+          # This needs to be determined again, due to env vars not being shared between steps
+          # https://github.com/actions/starter-workflows/issues/68
+          VERSION=$(echo "${{ github.ref }}" | grep -P '([^\/]+$)' -o) 
+          docker tag custompodautoscaler/operator:${VERSION} custompodautoscaler/operator:latest
+          docker push custompodautoscaler/operator:${VERSION}
           docker push custompodautoscaler/operator:latest
         else
           docker push custompodautoscaler/operator:$(git rev-parse --short ${{ github.sha }})
