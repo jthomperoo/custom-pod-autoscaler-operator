@@ -15,7 +15,7 @@ spec:
       serviceAccountName: custom-pod-autoscaler-operator
       containers:
         - name: custom-pod-autoscaler-operator
-          image: custompodautoscaler/operator
+          image: custompodautoscaler/operator:${VERSION}
           command:
           - custom-pod-autoscaler-operator
           imagePullPolicy: IfNotPresent
