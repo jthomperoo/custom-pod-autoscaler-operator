@@ -67,7 +67,7 @@ jobs:
     - name: Bundle YAML config
       if: github.event_name == 'release' && github.repository == 'jthomperoo/custom-pod-autoscaler-operator'
       run: |
-        VERSION="$(echo "${{ github.ref }}" | grep -P '([^\/]+$)' -o) "
+        export VERSION="$(echo "${{ github.ref }}" | grep -P '([^\/]+$)' -o) "
         mkdir dist
         cp -r deploy/* dist/
         envsubst < deploy/operator.yaml > dist/operator.yaml
