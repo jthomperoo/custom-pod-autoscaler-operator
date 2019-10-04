@@ -165,10 +165,22 @@ func newPodForCR(cr *custompodautoscalerv1alpha1.CustomPodAutoscaler) *corev1.Po
 	}
 }
 
-// newEnvVars converts CPA config to environment variables to be injected into the CPA container
+// newEnvVars builds a list of environment variables from the Spec
 func newEnvVars(cr *custompodautoscalerv1alpha1.CustomPodAutoscaler) []corev1.EnvVar {
+	envVars := []corev1.EnvVar{
+		corev1.EnvVar{
+			Name:  "SELECTOR",
+			Value: cr.Spec.Selector,
+		},
+	}
+	envVars = append(envVars, createEnvVarsFromConfig(cr.Spec.Config)...)
+	return envVars
+}
+
+// createEnvVarsFromConfig converts CPA config to environment variables
+func createEnvVarsFromConfig(configs []custompodautoscalerv1alpha1.CustomPodAutoscalerConfig) []corev1.EnvVar {
 	envVars := []corev1.EnvVar{}
-	for _, config := range cr.Spec.Config {
+	for _, config := range configs {
 		envVars = append(envVars, corev1.EnvVar{
 			Name:  config.Name,
 			Value: config.Value,
