@@ -172,6 +172,10 @@ func newEnvVars(cr *custompodautoscalerv1alpha1.CustomPodAutoscaler) []corev1.En
 			Name:  "SELECTOR",
 			Value: cr.Spec.Selector,
 		},
+		corev1.EnvVar{
+			Name:  "WATCH_NAMESPACE",
+			Value: cr.Namespace,
+		},
 	}
 	envVars = append(envVars, createEnvVarsFromConfig(cr.Spec.Config)...)
 	return envVars
