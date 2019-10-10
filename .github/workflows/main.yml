@@ -68,12 +68,14 @@ jobs:
     - name: Bundle YAML config
       if: github.event_name == 'release' && github.repository == 'jthomperoo/custom-pod-autoscaler-operator'
       run: |
-        VERSION=${{ steps.version.outputs.version }}
         mkdir dist dist/cluster dist/namespace
 
         # Copy cluster/namespace scope config
         cp -r deploy/cluster/* deploy/crds/* dist/cluster
         cp -r deploy/namespace/* deploy/crds/* dist/namespace
+
+        # Variables to sub into k8s templates
+        export VERSION=${{ steps.version.outputs.version }}
 
         # Substitute in variaibles
         for f in $(find dist/ -name \*.yaml -print); do
