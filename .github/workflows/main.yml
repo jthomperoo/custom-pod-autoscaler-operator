@@ -45,11 +45,11 @@ jobs:
         else
           VERSION=$(git rev-parse --short ${{ github.sha }})
         fi
+        # Output the version determined from this step, retrieved later as steps.version.outputs.version
         echo "::set-output name=version::${VERSION}"
 
     - name: Build
-      run: |
-        make VERSION=${{ steps.version.outputs.version }}
+      run: make VERSION=${{ steps.version.outputs.version }}
 
     - name: Deploy
       env:
@@ -57,14 +57,12 @@ jobs:
         DOCKER_PASS: ${{ secrets.DOCKER_PASS }}
       if: github.event_name != 'pull_request' && github.repository == 'jthomperoo/custom-pod-autoscaler-operator'
       run: |
+        VERSION=${{ steps.version.outputs.version }}
         echo "$DOCKER_PASS" | docker login --username=$DOCKER_USER --password-stdin
+        docker push custompodautoscaler/operator:${VERSION}
         if [ ${{ github.event_name }} == "release" ]; then
-          VERSION=${{ steps.version.outputs.version }}
           docker tag custompodautoscaler/operator:${VERSION} custompodautoscaler/operator:latest
-          docker push custompodautoscaler/operator:${VERSION}
           docker push custompodautoscaler/operator:latest
-        else
-          docker push custompodautoscaler/operator:$(git rev-parse --short ${{ github.sha }})
         fi
 
     - name: Bundle YAML config
