@@ -4,7 +4,7 @@ metadata:
   name: custom-pod-autoscaler-operator
 subjects:
 - kind: ServiceAccount
-  name: custom-pod-autoscaler-operator
+  name: custom-pod-autoscaler-operator-cluster
   namespace: "default"
 roleRef:
   kind: ClusterRole

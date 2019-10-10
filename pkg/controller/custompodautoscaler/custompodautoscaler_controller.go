@@ -97,7 +97,7 @@ func (r *ReconcileCustomPodAutoscaler) Reconcile(request reconcile.Request) (rec
 
 	// Fetch the CustomPodAutoscaler instance
 	instance := &custompodautoscalerv1alpha1.CustomPodAutoscaler{}
-	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
+	err := r.client.Get(context.Background(), request.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -155,11 +155,11 @@ func reconcileKubernetesObject(
 
 	// Check if k8s object already exists
 	runtimeObj := obj.(runtime.Object)
-	err := r.client.Get(context.TODO(), types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}, runtimeObj)
+	err := r.client.Get(context.Background(), types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}, runtimeObj)
 	if err != nil && errors.IsNotFound(err) {
 		// k8s object doesn't exist, create a new one
 		reqLogger.Info("Creating a new k8s object ", "Namespace", obj.GetNamespace(), "Name", obj.GetName())
-		err = r.client.Create(context.TODO(), runtimeObj)
+		err = r.client.Create(context.Background(), runtimeObj)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
