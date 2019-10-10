@@ -82,24 +82,18 @@ jobs:
         tar -czvf cluster.tar.gz dist/cluster/*
         tar -czvf namespace.tar.gz dist/namespace/*
 
-    - name: Deploy cluster-scope YAML
+    - name: Deploy cluster-scope YAML config
       if: github.event_name == 'release' && github.repository == 'jthomperoo/custom-pod-autoscaler-operator'
-      uses: actions/upload-release-asset@v1.0.0
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: Shopify/upload-to-release@1.0.0
       with:
-        upload_url: https://uploads.github.com/repos/jthomperoo/custom-pod-autoscaler-operator/releases/${{ steps.version.outputs.version }}/assets{?name,label}
-        asset_path: cluster.tar.gz
-        asset_name: cluster.tar.gz
-        asset_content_type: application/gzip
+        name: cluster.tar.gz
+        path: cluster.tar.gz
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Deploy cluster-scope YAML
+    - name: Deploy namespace-scope YAML config
       if: github.event_name == 'release' && github.repository == 'jthomperoo/custom-pod-autoscaler-operator'
-      uses: actions/upload-release-asset@v1.0.0
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: Shopify/upload-to-release@1.0.0
       with:
-        upload_url: https://uploads.github.com/repos/jthomperoo/custom-pod-autoscaler-operator/releases/${{ steps.version.outputs.version }}/assets{?name,label}
-        asset_path: namespace.tar.gz
-        asset_name: namespace.tar.gz
-        asset_content_type: application/gzip
+        name: namespace.tar.gz
+        path: namespace.tar.gz
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
