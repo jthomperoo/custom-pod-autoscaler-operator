@@ -19,8 +19,10 @@ package custompodautoscaler
 import (
 	"context"
 
+	"github.com/go-logr/logr"
 	custompodautoscalerv1alpha1 "github.com/jthomperoo/custom-pod-autoscaler-operator/pkg/apis/custompodautoscaler/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -107,52 +109,156 @@ func (r *ReconcileCustomPodAutoscaler) Reconcile(request reconcile.Request) (rec
 		return reconcile.Result{}, err
 	}
 
-	// Define a new Pod object
-	pod := newPodForCR(instance)
+	// Define a new Service Account object
+	serviceAccount := newServiceAccountForCPA(instance)
+	result, err := reconcileKubernetesObject(reqLogger, r, instance, serviceAccount)
+	if err != nil {
+		return result, err
+	}
 
+	// Define a new Role object
+	role := newRoleForCPA(instance)
+	result, err = reconcileKubernetesObject(reqLogger, r, instance, role)
+	if err != nil {
+		return result, err
+	}
+
+	// Define a new Role Binding object
+	roleBinding := newRoleBindingForCPA(instance)
+	result, err = reconcileKubernetesObject(reqLogger, r, instance, roleBinding)
+	if err != nil {
+		return result, err
+	}
+
+	// Define a new Pod object
+	pod := newPodForCPA(instance)
+	result, err = reconcileKubernetesObject(reqLogger, r, instance, pod)
+	if err != nil {
+		return result, err
+	}
+
+	return result, nil
+}
+
+// reconcileKubernetesObject manages k8s objects, making sure that the supplied object exists, and if it
+// doesn't it creates one
+func reconcileKubernetesObject(
+	reqLogger logr.Logger,
+	r *ReconcileCustomPodAutoscaler,
+	instance *custompodautoscalerv1alpha1.CustomPodAutoscaler,
+	obj metav1.Object,
+) (reconcile.Result, error) {
 	// Set CustomPodAutoscaler instance as the owner and controller
-	if err := controllerutil.SetControllerReference(instance, pod, r.scheme); err != nil {
+	if err := controllerutil.SetControllerReference(instance, obj, r.scheme); err != nil {
 		return reconcile.Result{}, err
 	}
 
-	// Check if this Pod already exists
-	found := &corev1.Pod{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
+	// Check if k8s object already exists
+	runtimeObj := obj.(runtime.Object)
+	err := r.client.Get(context.TODO(), types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}, runtimeObj)
 	if err != nil && errors.IsNotFound(err) {
-		reqLogger.Info("Creating a new Pod", "Pod.Namespace", pod.Namespace, "Pod.Name", pod.Name)
-		err = r.client.Create(context.TODO(), pod)
+		// k8s object doesn't exist, create a new one
+		reqLogger.Info("Creating a new k8s object ", "Namespace", obj.GetNamespace(), "Name", obj.GetName())
+		err = r.client.Create(context.TODO(), runtimeObj)
 		if err != nil {
 			return reconcile.Result{}, err
 		}
-
-		// Pod created successfully - don't requeue
+		// k8s object created successfully - don't requeue
 		return reconcile.Result{}, nil
 	} else if err != nil {
 		return reconcile.Result{}, err
 	}
 
-	// Pod already exists - don't requeue
-	reqLogger.Info("Skip reconcile: Pod already exists", "Pod.Namespace", found.Namespace, "Pod.Name", found.Name)
+	// k8s object already exists - don't requeue
+	reqLogger.Info("Skip reconcile: k8s object already exists", "Namespace", obj.GetNamespace(), "Name", obj.GetName())
 	return reconcile.Result{}, nil
 }
 
-// newPodForCR returns a pod with the same name/namespace as the cr with the image specified
-func newPodForCR(cr *custompodautoscalerv1alpha1.CustomPodAutoscaler) *corev1.Pod {
+// newServiceAccountForCPA returns a role with the same name/namespace as the cr for use by the CPA
+func newRoleForCPA(cr *custompodautoscalerv1alpha1.CustomPodAutoscaler) *rbacv1.Role {
+	labels := map[string]string{
+		"app.kubernetes.io/managed-by": "custom-pod-autoscaler",
+	}
+	return &rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      cr.Name,
+			Namespace: cr.Namespace,
+			Labels:    labels,
+		},
+		Rules: []rbacv1.PolicyRule{
+			rbacv1.PolicyRule{
+				APIGroups: []string{""},
+				Resources: []string{"pods"},
+				Verbs:     []string{"*"},
+			},
+			rbacv1.PolicyRule{
+				APIGroups: []string{"apps"},
+				Resources: []string{"deployments", "daemonsets", "replicasets", "statefulsets"},
+				Verbs:     []string{"*"},
+			},
+		},
+	}
+}
+
+// newServiceAccountForCPA returns a role binding with the same name/namespace as the cr for use by the CPA
+func newRoleBindingForCPA(cr *custompodautoscalerv1alpha1.CustomPodAutoscaler) *rbacv1.RoleBinding {
+	labels := map[string]string{
+		"app.kubernetes.io/managed-by": "custom-pod-autoscaler",
+	}
+	return &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      cr.Name,
+			Namespace: cr.Namespace,
+			Labels:    labels,
+		},
+		Subjects: []rbacv1.Subject{
+			rbacv1.Subject{
+				Kind:      "ServiceAccount",
+				Name:      cr.Name,
+				Namespace: cr.Namespace,
+			},
+		},
+		RoleRef: rbacv1.RoleRef{
+			Kind:     "Role",
+			Name:     cr.Name,
+			APIGroup: "rbac.authorization.k8s.io",
+		},
+	}
+}
+
+// newServiceAccountForCPA returns a service account with the same name/namespace as the cr for use by the CPA
+func newServiceAccountForCPA(cr *custompodautoscalerv1alpha1.CustomPodAutoscaler) *corev1.ServiceAccount {
+	labels := map[string]string{
+		"app.kubernetes.io/managed-by": "custom-pod-autoscaler",
+	}
+	return &corev1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      cr.Name,
+			Namespace: cr.Namespace,
+			Labels:    labels,
+		},
+	}
+}
+
+// newPodForCPA returns a pod with the same name/namespace as the cr with the image specified for use by the CPA
+func newPodForCPA(cr *custompodautoscalerv1alpha1.CustomPodAutoscaler) *corev1.Pod {
 	// default pull policy is PullIfNotPresent
 	pullPolicy := corev1.PullIfNotPresent
 	if cr.Spec.PullPolicy != "" {
 		pullPolicy = cr.Spec.PullPolicy
 	}
 	labels := map[string]string{
-		"app": cr.Name,
+		"app":                          cr.Name,
+		"app.kubernetes.io/managed-by": "custom-pod-autoscaler",
 	}
 	return &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name + "-pod",
+			Name:      cr.Name,
 			Namespace: cr.Namespace,
 			Labels:    labels,
 		},
 		Spec: corev1.PodSpec{
+			ServiceAccountName: cr.Name,
 			Containers: []corev1.Container{
 				{
 					Name:            cr.Name,
