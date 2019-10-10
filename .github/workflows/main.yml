@@ -91,6 +91,7 @@ jobs:
         upload_url: https://uploads.github.com/repos/jthomperoo/custom-pod-autoscaler-operator/releases/${{ steps.version.outputs.version }}/assets{?name,label}
         asset_path: cluster.tar.gz
         asset_name: cluster.tar.gz
+        asset_content_type: application/gzip
 
     - name: Deploy cluster-scope YAML
       if: github.event_name == 'release' && github.repository == 'jthomperoo/custom-pod-autoscaler-operator'
@@ -101,3 +102,4 @@ jobs:
         upload_url: https://uploads.github.com/repos/jthomperoo/custom-pod-autoscaler-operator/releases/${{ steps.version.outputs.version }}/assets{?name,label}
         asset_path: namespace.tar.gz
         asset_name: namespace.tar.gz
+        asset_content_type: application/gzip
