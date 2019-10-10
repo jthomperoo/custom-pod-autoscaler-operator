@@ -1,12 +1,16 @@
+![](https://github.com/jthomperoo/custom-pod-autoscaler-operator/workflows/main/badge.svg)
 # Custom Pod Autoscaler Operator
 This is the operator for managing Custom Pod Autoscalers (CPA). This allows you to add your own CPAs to the cluster to manage autoscaling deployments, enabling this is a requirement before you can add your own CPAs.
 
 ## Installation
-Run this to install the CPA definition and controller on your cluster:  
+### Quick start
+Run this to install the Operator and Custom Pod Autoscaler definition with cluster-wide scope on your cluster:
 ```
-VERSION=0.1.0 
-curl -L "https://github.com/jthomperoo/custom-pod-autoscaler-operator/releases/download/${VERSION}/deploy.tar.gz" | tar xvz --to-command 'kubectl apply -f -'
+VERSION=0.2.0
+curl -L "https://github.com/jthomperoo/custom-pod-autoscaler-operator/releases/download/${VERSION}/cluster.tar.gz" | tar xvz --to-command 'kubectl apply -f -'
 ```
+### Advanced
+See the [install guide](INSTALL.md) to see more in depth installation options, such as namespace specific installs.
 
 ## Developing
 

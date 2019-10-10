@@ -1,0 +1,11 @@
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: custom-pod-autoscaler-operator
+subjects:
+- kind: ServiceAccount
+  name: custom-pod-autoscaler-operator
+roleRef:
+  kind: Role
+  name: custom-pod-autoscaler-operator
+  apiGroup: rbac.authorization.k8s.io

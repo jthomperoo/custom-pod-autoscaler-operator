@@ -1,0 +1,32 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: custom-pod-autoscaler-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: custom-pod-autoscaler-operator
+  template:
+    metadata:
+      labels:
+        name: custom-pod-autoscaler-operator
+    spec:
+      serviceAccountName: custom-pod-autoscaler-operator
+      containers:
+        - name: custom-pod-autoscaler-operator
+          image: custompodautoscaler/operator:${VERSION}
+          command:
+          - custom-pod-autoscaler-operator
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: WATCH_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OPERATOR_NAME
+              value: "custom-pod-autoscaler-operator"

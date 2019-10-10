@@ -36,7 +36,8 @@ jobs:
         GO111MODULE=off go get -u golang.org/x/lint/golint
         make lint
 
-    - name: Build
+    - name: Version
+      id: version
       run: |
         if [ ${{ github.event_name }} == "release" ]; then
           # github.ref is in the form refs/tags/VERSION, so apply regex to just get version
@@ -44,7 +45,11 @@ jobs:
         else
           VERSION=$(git rev-parse --short ${{ github.sha }})
         fi
-        make VERSION=${VERSION}
+        # Output the version determined from this step, retrieved later as steps.version.outputs.version
+        echo "::set-output name=version::${VERSION}"
+
+    - name: Build
+      run: make VERSION=${{ steps.version.outputs.version }}
 
     - name: Deploy
       env:
@@ -52,31 +57,46 @@ jobs:
         DOCKER_PASS: ${{ secrets.DOCKER_PASS }}
       if: github.event_name != 'pull_request' && github.repository == 'jthomperoo/custom-pod-autoscaler-operator'
       run: |
+        VERSION=${{ steps.version.outputs.version }}
         echo "$DOCKER_PASS" | docker login --username=$DOCKER_USER --password-stdin
+        docker push custompodautoscaler/operator:${VERSION}
         if [ ${{ github.event_name }} == "release" ]; then
-          # This needs to be determined again, due to env vars not being shared between steps
-          # https://github.com/actions/starter-workflows/issues/68
-          VERSION=$(echo "${{ github.ref }}" | grep -P '([^\/]+$)' -o) 
           docker tag custompodautoscaler/operator:${VERSION} custompodautoscaler/operator:latest
-          docker push custompodautoscaler/operator:${VERSION}
           docker push custompodautoscaler/operator:latest
-        else
-          docker push custompodautoscaler/operator:$(git rev-parse --short ${{ github.sha }})
         fi
 
     - name: Bundle YAML config
       if: github.event_name == 'release' && github.repository == 'jthomperoo/custom-pod-autoscaler-operator'
       run: |
-        export VERSION="$(echo "${{ github.ref }}" | grep -P '([^\/]+$)' -o) "
-        mkdir dist
-        cp -r deploy/* dist/
-        envsubst < deploy/operator.yaml > dist/operator.yaml
-        tar -czvf deploy.tar.gz dist/*
+        mkdir dist dist/cluster dist/namespace
 
-    - name: Deploy YAML config
+        # Copy cluster/namespace scope config
+        cp -r deploy/cluster/* deploy/crds/* dist/cluster
+        cp -r deploy/namespace/* deploy/crds/* dist/namespace
+
+        # Variables to sub into k8s templates
+        export VERSION=${{ steps.version.outputs.version }}
+
+        # Substitute in variaibles
+        for f in $(find dist/ -name \*.yaml -print); do
+          envsubst < ${f} > ${f}.tmp && mv ${f}.tmp ${f}
+        done
+
+        tar -czvf cluster.tar.gz dist/cluster/*
+        tar -czvf namespace.tar.gz dist/namespace/*
+
+    - name: Deploy cluster-scope YAML config
       if: github.event_name == 'release' && github.repository == 'jthomperoo/custom-pod-autoscaler-operator'
       uses: Shopify/upload-to-release@1.0.0
       with:
-        name: deploy.tar.gz
-        path: deploy.tar.gz
+        name: cluster.tar.gz
+        path: cluster.tar.gz
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Deploy namespace-scope YAML config
+      if: github.event_name == 'release' && github.repository == 'jthomperoo/custom-pod-autoscaler-operator'
+      uses: Shopify/upload-to-release@1.0.0
+      with:
+        name: namespace.tar.gz
+        path: namespace.tar.gz
         repo-token: ${{ secrets.GITHUB_TOKEN }}
