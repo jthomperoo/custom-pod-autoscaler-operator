@@ -12,10 +12,10 @@ spec:
       labels:
         name: custom-pod-autoscaler-operator
     spec:
-      serviceAccountName: custom-pod-autoscaler-operator
+      serviceAccountName: custom-pod-autoscaler-operator-cluster
       containers:
         - name: custom-pod-autoscaler-operator
-          image: custompodautoscaler/operator:${VERSION}
+          image: custompodautoscaler/operator:0.2.0
           command:
           - custom-pod-autoscaler-operator
           imagePullPolicy: IfNotPresent
