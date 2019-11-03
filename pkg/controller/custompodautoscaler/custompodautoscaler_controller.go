@@ -275,11 +275,11 @@ func newPodForCPA(cr *custompodautoscalerv1alpha1.CustomPodAutoscaler) *corev1.P
 func newEnvVars(cr *custompodautoscalerv1alpha1.CustomPodAutoscaler) []corev1.EnvVar {
 	envVars := []corev1.EnvVar{
 		corev1.EnvVar{
-			Name:  "SELECTOR",
+			Name:  "selector",
 			Value: cr.Spec.Selector,
 		},
 		corev1.EnvVar{
-			Name:  "WATCH_NAMESPACE",
+			Name:  "namespace",
 			Value: cr.Namespace,
 		},
 	}
