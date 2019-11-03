@@ -6,7 +6,7 @@ This is the operator for managing Custom Pod Autoscalers (CPA). This allows you 
 ### Quick start
 Run this to install the Operator and Custom Pod Autoscaler definition with cluster-wide scope on your cluster:
 ```
-VERSION=0.2.1
+VERSION=0.3.0
 curl -L "https://github.com/jthomperoo/custom-pod-autoscaler-operator/releases/download/${VERSION}/cluster.tar.gz" | tar xvz --to-command 'kubectl apply -f -'
 ```
 ### Advanced
