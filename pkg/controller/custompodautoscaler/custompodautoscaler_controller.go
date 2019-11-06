@@ -18,6 +18,7 @@ package custompodautoscaler
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/go-logr/logr"
 	custompodautoscalerv1alpha1 "github.com/jthomperoo/custom-pod-autoscaler-operator/pkg/apis/custompodautoscaler/v1alpha1"
@@ -109,6 +110,12 @@ func (r *ReconcileCustomPodAutoscaler) Reconcile(request reconcile.Request) (rec
 		return reconcile.Result{}, err
 	}
 
+	// Parse scaleTargetRef
+	scaleTargetRef, err := json.Marshal(instance.Spec.ScaleTargetRef)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
 	// Define a new Service Account object
 	serviceAccount := newServiceAccountForCPA(instance)
 	result, err := reconcileKubernetesObject(reqLogger, r, instance, serviceAccount)
@@ -131,7 +138,7 @@ func (r *ReconcileCustomPodAutoscaler) Reconcile(request reconcile.Request) (rec
 	}
 
 	// Define a new Pod object
-	pod := newPodForCPA(instance)
+	pod := newPodForCPA(instance, string(scaleTargetRef))
 	result, err = reconcileKubernetesObject(reqLogger, r, instance, pod)
 	if err != nil {
 		return result, err
@@ -241,7 +248,7 @@ func newServiceAccountForCPA(cr *custompodautoscalerv1alpha1.CustomPodAutoscaler
 }
 
 // newPodForCPA returns a pod with the same name/namespace as the cr with the image specified for use by the CPA
-func newPodForCPA(cr *custompodautoscalerv1alpha1.CustomPodAutoscaler) *corev1.Pod {
+func newPodForCPA(cr *custompodautoscalerv1alpha1.CustomPodAutoscaler, scaleTargetRef string) *corev1.Pod {
 	// default pull policy is PullIfNotPresent
 	pullPolicy := corev1.PullIfNotPresent
 	if cr.Spec.PullPolicy != "" {
@@ -264,7 +271,7 @@ func newPodForCPA(cr *custompodautoscalerv1alpha1.CustomPodAutoscaler) *corev1.P
 					Name:            cr.Name,
 					Image:           cr.Spec.Image,
 					ImagePullPolicy: pullPolicy,
-					Env:             newEnvVars(cr),
+					Env:             newEnvVars(cr, scaleTargetRef),
 				},
 			},
 		},
@@ -272,11 +279,11 @@ func newPodForCPA(cr *custompodautoscalerv1alpha1.CustomPodAutoscaler) *corev1.P
 }
 
 // newEnvVars builds a list of environment variables from the Spec
-func newEnvVars(cr *custompodautoscalerv1alpha1.CustomPodAutoscaler) []corev1.EnvVar {
+func newEnvVars(cr *custompodautoscalerv1alpha1.CustomPodAutoscaler, scaleTargetRef string) []corev1.EnvVar {
 	envVars := []corev1.EnvVar{
 		corev1.EnvVar{
-			Name:  "selector",
-			Value: cr.Spec.Selector,
+			Name:  "scaleTargetRef",
+			Value: scaleTargetRef,
 		},
 		corev1.EnvVar{
 			Name:  "namespace",

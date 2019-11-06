@@ -115,11 +115,10 @@ func schema_pkg_apis_custompodautoscaler_v1alpha1_CustomPodAutoscalerSpec(ref co
 							Format:      "",
 						},
 					},
-					"selector": {
+					"scaleTargetRef": {
 						SchemaProps: spec.SchemaProps{
-							Description: "Selector defining what the Custom Pod Autoscaler should manage",
-							Type:        []string{"string"},
-							Format:      "",
+							Description: "ScaleTargetRef defining what the Custom Pod Autoscaler should manage",
+							Ref:         ref("./pkg/apis/custompodautoscaler/v1alpha1.ScaleTargetRef"),
 						},
 					},
 					"config": {
@@ -143,11 +142,11 @@ func schema_pkg_apis_custompodautoscaler_v1alpha1_CustomPodAutoscalerSpec(ref co
 						},
 					},
 				},
-				Required: []string{"image", "selector"},
+				Required: []string{"image", "scaleTargetRef"},
 			},
 		},
 		Dependencies: []string{
-			"./pkg/apis/custompodautoscaler/v1alpha1.CustomPodAutoscalerConfig"},
+			"./pkg/apis/custompodautoscaler/v1alpha1.CustomPodAutoscalerConfig", "./pkg/apis/custompodautoscaler/v1alpha1.ScaleTargetRef"},
 	}
 }
 

@@ -19,9 +19,13 @@ package v1alpha1
 // Important: Run "make generate" to regenerate code after modifying this file
 
 import (
+	autoscaling "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+// ScaleTargetRef defines a resource to target
+type ScaleTargetRef autoscaling.CrossVersionObjectReference
 
 // CustomPodAutoscalerConfig defines the configuration options that can be passed to the CustomPodAutoscaler
 // +k8s:openapi-gen=true
@@ -35,8 +39,8 @@ type CustomPodAutoscalerConfig struct {
 type CustomPodAutoscalerSpec struct {
 	// The image of the Custom Pod Autoscaler
 	Image string `json:"image"`
-	// Selector defining what the Custom Pod Autoscaler should manage
-	Selector string `json:"selector"`
+	// ScaleTargetRef defining what the Custom Pod Autoscaler should manage
+	ScaleTargetRef ScaleTargetRef `json:"scaleTargetRef"`
 	// Configuration options to be delivered as environment variables to the container
 	Config []CustomPodAutoscalerConfig `json:"config,omitempty"`
 	// Pull policy for the Custom Pod Autoscaler, default IfNotPresent
