@@ -46,8 +46,6 @@ jobs:
         fi
 
         make VERSION=${VERSION}
-        # Output the version determined from this step, retrieved later as steps.version.outputs.version
-        echo "::set-output name=version::${VERSION}"
 
     - uses: codecov/codecov-action@v1.0.3
       if: github.repository == 'jthomperoo/custom-pod-autoscaler-operator'
@@ -63,7 +61,12 @@ jobs:
         DOCKER_PASS: ${{ secrets.DOCKER_PASS }}
       if: github.event_name != 'pull_request' && github.repository == 'jthomperoo/custom-pod-autoscaler-operator'
       run: |
-        VERSION=${{ steps.version.outputs.version }}
+        if [ ${{ github.event_name }} == "release" ]; then
+          # github.ref is in the form refs/tags/VERSION, so apply regex to just get version
+          VERSION=$(echo "${{ github.ref }}" | grep -P '([^\/]+$)' -o) 
+        else
+          VERSION=$(git rev-parse --short ${{ github.sha }})
+        fi
         echo "$DOCKER_PASS" | docker login --username=$DOCKER_USER --password-stdin
         docker push custompodautoscaler/operator:${VERSION}
         if [ ${{ github.event_name }} == "release" ]; then
