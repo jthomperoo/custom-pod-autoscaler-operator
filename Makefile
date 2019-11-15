@@ -6,6 +6,10 @@ default:
 	@echo "=============Building image============="
 	operator-sdk build "$(REGISTRY)/$(NAME):$(VERSION)"
 
+unittest:
+	@echo "=============Running unit tests============="
+	go test ./... -cover -covermode atomic -coverprofile unit_cover.out --tags=unit
+
 lint:
 	@echo "=============Linting============="
 	find . -name '*.go' | grep -v zz_generated | golint -set_exit_status
