@@ -45,7 +45,7 @@ jobs:
           VERSION=$(git rev-parse --short ${{ github.sha }})
         fi
 
-        make VERSION=${{ steps.version.outputs.version }}
+        make VERSION=${VERSION}
         # Output the version determined from this step, retrieved later as steps.version.outputs.version
         echo "::set-output name=version::${VERSION}"
 
