@@ -1,6 +1,10 @@
-![](https://github.com/jthomperoo/custom-pod-autoscaler-operator/workflows/main/badge.svg)
+[![Build](https://github.com/jthomperoo/custom-pod-autoscaler-operator/workflows/main/badge.svg)](https://github.com/jthomperoo/custom-pod-autoscaler-operator/actions)
+[![codecov](https://codecov.io/gh/jthomperoo/custom-pod-autoscaler-operator/branch/master/graph/badge.svg)](https://codecov.io/gh/jthomperoo/custom-pod-autoscaler-operator)
+[![GoDoc](https://godoc.org/github.com/jthomperoo/custom-pod-autoscaler-operator?status.svg)](https://godoc.org/github.com/jthomperoo/custom-pod-autoscaler-operator)
 # Custom Pod Autoscaler Operator
-This is the operator for managing Custom Pod Autoscalers (CPA). This allows you to add your own CPAs to the cluster to manage autoscaling deployments, enabling this is a requirement before you can add your own CPAs.
+This is the operator for managing Custom Pod Autoscalers (CPA). This allows you to add your own CPAs to the cluster to manage autoscaling deployments, enabling this is a requirement before you can add your own CPAs.  
+
+The Custom Pod Autoscaler Operator is part of the [Custom Pod Autoscaler Framework](https://github.com/jthomperoo/custom-pod-autoscaler/wiki/Custom-Pod-Autoscaler-Framework).
 
 ## Installation
 ### Quick start
