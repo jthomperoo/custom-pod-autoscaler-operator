@@ -90,7 +90,13 @@ jobs:
         cp -r deploy/namespace/* deploy/crds/* dist/namespace
 
         # Variables to sub into k8s templates
-        export VERSION=${{ steps.version.outputs.version }}
+        if [ ${{ github.event_name }} == "release" ]; then
+          # github.ref is in the form refs/tags/VERSION, so apply regex to just get version
+          VERSION=$(echo "${{ github.ref }}" | grep -P '([^\/]+$)' -o) 
+        else
+          VERSION=$(git rev-parse --short ${{ github.sha }})
+        fi
+        export VERSION=${VERSION}
 
         # Substitute in variaibles
         for f in $(find dist/ -name \*.yaml -print); do
