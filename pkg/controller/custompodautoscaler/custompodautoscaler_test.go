@@ -42,6 +42,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 	admissiontypes "sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
 )
@@ -659,6 +660,7 @@ func TestReconcile(t *testing.T) {
 				Client:                       test.client,
 				Scheme:                       runtime.NewScheme(),
 				KubernetesResourceReconciler: test.k8sreconciler,
+				Log:                          logf.Log.WithName("controller_custompodautoscaler"),
 			}
 			result, err := reconciler.Reconcile(test.request)
 			if !cmp.Equal(err, test.expectedErr, equateErrorMessage) {
