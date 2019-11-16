@@ -35,13 +35,11 @@ type CustomPodAutoscalerConfig struct {
 // +k8s:openapi-gen=true
 type CustomPodAutoscalerSpec struct {
 	// The image of the Custom Pod Autoscaler
-	Image string `json:"image"`
+	Template corev1.PodTemplateSpec `json:"template"`
 	// ScaleTargetRef defining what the Custom Pod Autoscaler should manage
 	ScaleTargetRef autoscaling.CrossVersionObjectReference `json:"scaleTargetRef"`
 	// Configuration options to be delivered as environment variables to the container
 	Config []CustomPodAutoscalerConfig `json:"config,omitempty"`
-	// Pull policy for the Custom Pod Autoscaler, default IfNotPresent
-	PullPolicy corev1.PullPolicy `json:"pullPolicy,omitempty"`
 }
 
 // CustomPodAutoscalerStatus defines the observed state of CustomPodAutoscaler

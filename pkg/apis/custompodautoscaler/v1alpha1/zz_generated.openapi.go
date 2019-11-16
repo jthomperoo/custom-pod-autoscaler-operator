@@ -110,11 +110,10 @@ func schema_pkg_apis_custompodautoscaler_v1alpha1_CustomPodAutoscalerSpec(ref co
 				Description: "CustomPodAutoscalerSpec defines the desired state of CustomPodAutoscaler",
 				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
-					"image": {
+					"template": {
 						SchemaProps: spec.SchemaProps{
 							Description: "The image of the Custom Pod Autoscaler",
-							Type:        []string{"string"},
-							Format:      "",
+							Ref:         ref("k8s.io/api/core/v1.PodTemplateSpec"),
 						},
 					},
 					"scaleTargetRef": {
@@ -136,19 +135,12 @@ func schema_pkg_apis_custompodautoscaler_v1alpha1_CustomPodAutoscalerSpec(ref co
 							},
 						},
 					},
-					"pullPolicy": {
-						SchemaProps: spec.SchemaProps{
-							Description: "Pull policy for the Custom Pod Autoscaler, default IfNotPresent",
-							Type:        []string{"string"},
-							Format:      "",
-						},
-					},
 				},
-				Required: []string{"image", "scaleTargetRef"},
+				Required: []string{"template", "scaleTargetRef"},
 			},
 		},
 		Dependencies: []string{
-			"./pkg/apis/custompodautoscaler/v1alpha1.CustomPodAutoscalerConfig", "k8s.io/api/autoscaling/v1.CrossVersionObjectReference"},
+			"./pkg/apis/custompodautoscaler/v1alpha1.CustomPodAutoscalerConfig", "k8s.io/api/autoscaling/v1.CrossVersionObjectReference", "k8s.io/api/core/v1.PodTemplateSpec"},
 	}
 }
 

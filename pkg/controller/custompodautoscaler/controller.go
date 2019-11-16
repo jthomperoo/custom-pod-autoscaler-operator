@@ -158,7 +158,7 @@ func (r *ReconcileCustomPodAutoscaler) Reconcile(request reconcile.Request) (rec
 	}
 
 	labels := map[string]string{
-		"app.kubernetes.io/managed-by": "custom-pod-autoscaler",
+		"app.kubernetes.io/managed-by": "custom-pod-autoscaler-operator",
 	}
 
 	// Define a new Service Account object
@@ -224,32 +224,43 @@ func (r *ReconcileCustomPodAutoscaler) Reconcile(request reconcile.Request) (rec
 		return result, err
 	}
 
-	labels["app"] = instance.Name
-
-	// default pull policy is PullIfNotPresent
-	pullPolicy := corev1.PullIfNotPresent
-	if instance.Spec.PullPolicy != "" {
-		pullPolicy = instance.Spec.PullPolicy
+	var podLabels map[string]string
+	if instance.Spec.Template.ObjectMeta.Labels == nil {
+		podLabels = map[string]string{}
+	} else {
+		podLabels = instance.Spec.Template.ObjectMeta.Labels
 	}
+	podLabels["app.kubernetes.io/managed-by"] = "custom-pod-autoscaler-operator"
+
+	objectMeta := instance.Spec.Template.ObjectMeta
+	if objectMeta.Name == "" {
+		objectMeta.Name = instance.Name
+	}
+	if objectMeta.Namespace == "" {
+		objectMeta.Namespace = instance.Namespace
+	}
+	objectMeta.Labels = podLabels
+
+	podSpec := instance.Spec.Template.Spec
+	containers := []corev1.Container{}
+	for _, container := range podSpec.Containers {
+		var envVars []corev1.EnvVar
+		if container.Env == nil {
+			envVars = []corev1.EnvVar{}
+		} else {
+			envVars = container.Env
+		}
+		envVars = append(envVars, newEnvVars(instance, string(scaleTargetRef))...)
+		container.Env = envVars
+		containers = append(containers, container)
+	}
+	podSpec.Containers = containers
+	podSpec.ServiceAccountName = serviceAccount.Name
 
 	// Define a new Pod object
 	pod := &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance.Name,
-			Namespace: instance.Namespace,
-			Labels:    labels,
-		},
-		Spec: corev1.PodSpec{
-			ServiceAccountName: instance.Name,
-			Containers: []corev1.Container{
-				{
-					Name:            instance.Name,
-					Image:           instance.Spec.Image,
-					ImagePullPolicy: pullPolicy,
-					Env:             newEnvVars(instance, string(scaleTargetRef)),
-				},
-			},
-		},
+		ObjectMeta: objectMeta,
+		Spec:       podSpec,
 	}
 	result, err = r.KubernetesResourceReconciler.Reconcile(reqLogger, instance, pod)
 	if err != nil {
