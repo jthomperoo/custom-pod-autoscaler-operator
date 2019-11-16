@@ -31,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -40,30 +41,44 @@ import (
 
 var log = logf.Log.WithName("controller_custompodautoscaler")
 
-// Add creates a new CustomPodAutoscaler Controller and adds it to the Manager. The Manager will set fields on the Controller
-// and Start it when the Manager is Started.
-func Add(mgr manager.Manager) error {
-	return add(mgr, newReconciler(mgr))
+type k8sReconciler interface {
+	Reconcile(
+		reqLogger logr.Logger,
+		instance *custompodautoscalerv1alpha1.CustomPodAutoscaler,
+		obj metav1.Object,
+	) (reconcile.Result, error)
 }
 
-// newReconciler returns a new reconcile.Reconciler
-func newReconciler(mgr manager.Manager) reconcile.Reconciler {
+// ReconcileCustomPodAutoscaler reconciles a CustomPodAutoscaler object
+type ReconcileCustomPodAutoscaler struct {
+	// This client, initialized using mgr.Client() above, is a split client
+	// that reads objects from the cache and writes to the apiserver
+	Client                       client.Client
+	Scheme                       *runtime.Scheme
+	KubernetesResourceReconciler k8sReconciler
+}
+
+// ControllerLinker is used to create a new controller linked to the manager provided
+type ControllerLinker func(name string, mgr manager.Manager, options controller.Options) (controller.Controller, error)
+
+// Add creates a new CustomPodAutoscaler Controller and adds it to the Manager. The Manager will set fields on the Controller
+// and Start it when the Manager is Started.
+func Add(mgr manager.Manager, linker ControllerLinker) error {
+	// Set up reconciler
 	client := mgr.GetClient()
 	scheme := mgr.GetScheme()
-	return &ReconcileCustomPodAutoscaler{
+	r := &ReconcileCustomPodAutoscaler{
 		Client: client,
 		Scheme: scheme,
 		KubernetesResourceReconciler: &k8sreconcile.KubernetesResourceReconciler{
-			Client: client,
-			Scheme: scheme,
+			Client:               client,
+			Scheme:               scheme,
+			ControllerReferencer: controllerutil.SetControllerReference,
 		},
 	}
-}
 
-// add adds a new Controller to mgr with r as the reconcile.Reconciler
-func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	// Create a new controller
-	c, err := controller.New("custompodautoscaler-controller", mgr, controller.Options{Reconciler: r})
+	c, err := linker("custompodautoscaler-controller", mgr, controller.Options{Reconciler: r})
 	if err != nil {
 		return err
 	}
@@ -83,27 +98,34 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
+	// Watch for changes to secondary resource ServiceAccounts and requeue the owner CustomPodAutoscaler
+	err = c.Watch(&source.Kind{Type: &corev1.ServiceAccount{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &custompodautoscalerv1alpha1.CustomPodAutoscaler{},
+	})
+	if err != nil {
+		return err
+	}
+
+	// Watch for changes to secondary resource Roles and requeue the owner CustomPodAutoscaler
+	err = c.Watch(&source.Kind{Type: &rbacv1.Role{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &custompodautoscalerv1alpha1.CustomPodAutoscaler{},
+	})
+	if err != nil {
+		return err
+	}
+
+	// Watch for changes to secondary resource RoleBindings and requeue the owner CustomPodAutoscaler
+	err = c.Watch(&source.Kind{Type: &rbacv1.RoleBinding{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &custompodautoscalerv1alpha1.CustomPodAutoscaler{},
+	})
+	if err != nil {
+		return err
+	}
+
 	return nil
-}
-
-// blank assignment to verify that ReconcileCustomPodAutoscaler implements reconcile.Reconciler
-var _ reconcile.Reconciler = &ReconcileCustomPodAutoscaler{}
-
-type k8sReconciler interface {
-	Reconcile(
-		reqLogger logr.Logger,
-		instance *custompodautoscalerv1alpha1.CustomPodAutoscaler,
-		obj metav1.Object,
-	) (reconcile.Result, error)
-}
-
-// ReconcileCustomPodAutoscaler reconciles a CustomPodAutoscaler object
-type ReconcileCustomPodAutoscaler struct {
-	// This client, initialized using mgr.Client() above, is a split client
-	// that reads objects from the cache and writes to the apiserver
-	Client                       client.Client
-	Scheme                       *runtime.Scheme
-	KubernetesResourceReconciler k8sReconciler
 }
 
 // Reconcile reads that state of the cluster for a CustomPodAutoscaler object and makes changes based on the state read
