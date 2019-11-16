@@ -28,7 +28,7 @@ import (
 	"k8s.io/client-go/rest"
 
 	"github.com/jthomperoo/custom-pod-autoscaler-operator/pkg/apis"
-	"github.com/jthomperoo/custom-pod-autoscaler-operator/pkg/controller"
+	"github.com/jthomperoo/custom-pod-autoscaler-operator/pkg/controller/custompodautoscaler"
 
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	kubemetrics "github.com/operator-framework/operator-sdk/pkg/kube-metrics"
@@ -41,6 +41,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/runtime/signals"
@@ -123,8 +124,8 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Setup all Controllers
-	if err := controller.AddToManager(mgr); err != nil {
+	err = custompodautoscaler.Add(mgr, controller.New)
+	if err != nil {
 		log.Error(err, "")
 		os.Exit(1)
 	}

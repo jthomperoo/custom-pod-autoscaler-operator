@@ -39,8 +39,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-var log = logf.Log.WithName("controller_custompodautoscaler")
-
 type k8sReconciler interface {
 	Reconcile(
 		reqLogger logr.Logger,
@@ -56,6 +54,7 @@ type ReconcileCustomPodAutoscaler struct {
 	Client                       client.Client
 	Scheme                       *runtime.Scheme
 	KubernetesResourceReconciler k8sReconciler
+	Log                          logr.Logger
 }
 
 // ControllerLinker is used to create a new controller linked to the manager provided
@@ -75,6 +74,7 @@ func Add(mgr manager.Manager, linker ControllerLinker) error {
 			Scheme:               scheme,
 			ControllerReferencer: controllerutil.SetControllerReference,
 		},
+		Log: logf.Log.WithName("controller_custompodautoscaler"),
 	}
 
 	// Create a new controller
@@ -133,7 +133,7 @@ func Add(mgr manager.Manager, linker ControllerLinker) error {
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileCustomPodAutoscaler) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
+	reqLogger := r.Log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling CustomPodAutoscaler")
 
 	// Fetch the CustomPodAutoscaler instance
@@ -224,6 +224,8 @@ func (r *ReconcileCustomPodAutoscaler) Reconcile(request reconcile.Request) (rec
 		return result, err
 	}
 
+	// Set up Pod labels, if labels are provided in the template Pod Spec the labels are merged
+	// with the CPA managed-by label, otherwise only the managed-by label is added
 	var podLabels map[string]string
 	if instance.Spec.Template.ObjectMeta.Labels == nil {
 		podLabels = map[string]string{}
@@ -232,6 +234,8 @@ func (r *ReconcileCustomPodAutoscaler) Reconcile(request reconcile.Request) (rec
 	}
 	podLabels["app.kubernetes.io/managed-by"] = "custom-pod-autoscaler-operator"
 
+	// Set up ObjectMeta, if no name or namespaces are provided in the template PodSpec then
+	// the CPA name and namespace are used
 	objectMeta := instance.Spec.Template.ObjectMeta
 	if objectMeta.Name == "" {
 		objectMeta.Name = instance.Name
@@ -241,23 +245,30 @@ func (r *ReconcileCustomPodAutoscaler) Reconcile(request reconcile.Request) (rec
 	}
 	objectMeta.Labels = podLabels
 
+	// Set up the PodSpec template
 	podSpec := instance.Spec.Template.Spec
+	// Inject environment variables to every Container specified by the PodSpec
 	containers := []corev1.Container{}
 	for _, container := range podSpec.Containers {
+		// If no environment variables specified by the template PodSpec, set up empty env vars
+		// slice
 		var envVars []corev1.EnvVar
 		if container.Env == nil {
 			envVars = []corev1.EnvVar{}
 		} else {
 			envVars = container.Env
 		}
-		envVars = append(envVars, newEnvVars(instance, string(scaleTargetRef))...)
+		// Inject in configuration, such as namespace, target ref and configuration
+		// options as environment variables
+		envVars = append(envVars, cpaEnvVars(instance, string(scaleTargetRef))...)
 		container.Env = envVars
 		containers = append(containers, container)
 	}
+	// Update PodSpec to use the modified containers, and to point to the provisioned service account
 	podSpec.Containers = containers
 	podSpec.ServiceAccountName = serviceAccount.Name
 
-	// Define a new Pod object
+	// Define Pod object with ObjectMeta and modified PodSpec
 	pod := &corev1.Pod{
 		ObjectMeta: objectMeta,
 		Spec:       podSpec,
@@ -271,7 +282,7 @@ func (r *ReconcileCustomPodAutoscaler) Reconcile(request reconcile.Request) (rec
 }
 
 // newEnvVars builds a list of environment variables from the Spec
-func newEnvVars(cr *custompodautoscalerv1alpha1.CustomPodAutoscaler, scaleTargetRef string) []corev1.EnvVar {
+func cpaEnvVars(cr *custompodautoscalerv1alpha1.CustomPodAutoscaler, scaleTargetRef string) []corev1.EnvVar {
 	envVars := []corev1.EnvVar{
 		corev1.EnvVar{
 			Name:  "scaleTargetRef",
