@@ -16,6 +16,8 @@ spec:
     status: {}
   validation:
     openAPIV3Schema:
+      description: CustomPodAutoscaler is the Schema for the custompodautoscalers
+        API
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation
@@ -30,11 +32,14 @@ spec:
         metadata:
           type: object
         spec:
+          description: CustomPodAutoscalerSpec defines the desired state of CustomPodAutoscaler
           properties:
             config:
               description: Configuration options to be delivered as environment variables
                 to the container
               items:
+                description: CustomPodAutoscalerConfig defines the configuration options
+                  that can be passed to the CustomPodAutoscaler
                 properties:
                   name:
                     type: string
@@ -73,7 +78,9 @@ spec:
           - scaleTargetRef
           type: object
         status:
+          description: CustomPodAutoscalerStatus defines the observed state of CustomPodAutoscaler
           type: object
+      type: object
   version: v1alpha1
   versions:
   - name: v1alpha1
