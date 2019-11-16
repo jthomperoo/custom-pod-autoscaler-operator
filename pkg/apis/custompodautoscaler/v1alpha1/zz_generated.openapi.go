@@ -38,6 +38,7 @@ func schema_pkg_apis_custompodautoscaler_v1alpha1_CustomPodAutoscaler(ref common
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
 				Description: "CustomPodAutoscaler is the Schema for the custompodautoscalers API",
+				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"kind": {
 						SchemaProps: spec.SchemaProps{
@@ -81,6 +82,7 @@ func schema_pkg_apis_custompodautoscaler_v1alpha1_CustomPodAutoscalerConfig(ref 
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
 				Description: "CustomPodAutoscalerConfig defines the configuration options that can be passed to the CustomPodAutoscaler",
+				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"name": {
 						SchemaProps: spec.SchemaProps{
@@ -98,7 +100,6 @@ func schema_pkg_apis_custompodautoscaler_v1alpha1_CustomPodAutoscalerConfig(ref 
 				Required: []string{"name", "value"},
 			},
 		},
-		Dependencies: []string{},
 	}
 }
 
@@ -107,6 +108,7 @@ func schema_pkg_apis_custompodautoscaler_v1alpha1_CustomPodAutoscalerSpec(ref co
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
 				Description: "CustomPodAutoscalerSpec defines the desired state of CustomPodAutoscaler",
+				Type:        []string{"object"},
 				Properties: map[string]spec.Schema{
 					"image": {
 						SchemaProps: spec.SchemaProps{
@@ -118,7 +120,7 @@ func schema_pkg_apis_custompodautoscaler_v1alpha1_CustomPodAutoscalerSpec(ref co
 					"scaleTargetRef": {
 						SchemaProps: spec.SchemaProps{
 							Description: "ScaleTargetRef defining what the Custom Pod Autoscaler should manage",
-							Ref:         ref("./pkg/apis/custompodautoscaler/v1alpha1.ScaleTargetRef"),
+							Ref:         ref("k8s.io/api/autoscaling/v1.CrossVersionObjectReference"),
 						},
 					},
 					"config": {
@@ -146,7 +148,7 @@ func schema_pkg_apis_custompodautoscaler_v1alpha1_CustomPodAutoscalerSpec(ref co
 			},
 		},
 		Dependencies: []string{
-			"./pkg/apis/custompodautoscaler/v1alpha1.CustomPodAutoscalerConfig", "./pkg/apis/custompodautoscaler/v1alpha1.ScaleTargetRef"},
+			"./pkg/apis/custompodautoscaler/v1alpha1.CustomPodAutoscalerConfig", "k8s.io/api/autoscaling/v1.CrossVersionObjectReference"},
 	}
 }
 
@@ -155,9 +157,8 @@ func schema_pkg_apis_custompodautoscaler_v1alpha1_CustomPodAutoscalerStatus(ref 
 		Schema: spec.Schema{
 			SchemaProps: spec.SchemaProps{
 				Description: "CustomPodAutoscalerStatus defines the observed state of CustomPodAutoscaler",
-				Properties:  map[string]spec.Schema{},
+				Type:        []string{"object"},
 			},
 		},
-		Dependencies: []string{},
 	}
 }
