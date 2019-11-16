@@ -36,6 +36,12 @@ jobs:
         GO111MODULE=off go get -u golang.org/x/lint/golint
 
         make lint
+
+        # Run code generation
+        make generate
+        # Check diff for changes in committed code and generated code
+        git diff --exit-code
+        
         make unittest
 
         if [ ${{ github.event_name }} == "release" ]; then
