@@ -295,15 +295,13 @@ func TestReconcile(t *testing.T) {
 			errors.New("Error reconciling pod"),
 			fake.NewFakeClientWithScheme(func() *runtime.Scheme {
 				s := runtime.NewScheme()
-				s.AddKnownTypes(custompodautoscalerv1alpha1.SchemeGroupVersion, &custompodautoscalerv1alpha1.CustomPodAutoscaler{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test",
-						Namespace: "test-namespace",
-					},
-				})
+				s.AddKnownTypes(custompodautoscalerv1alpha1.SchemeGroupVersion, &custompodautoscalerv1alpha1.CustomPodAutoscaler{})
 				return s
 			}(),
 				&custompodautoscalerv1alpha1.CustomPodAutoscaler{
+					Spec: custompodautoscalerv1alpha1.CustomPodAutoscalerSpec{
+						Template: corev1.PodTemplateSpec{},
+					},
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test",
 						Namespace: "test-namespace",
@@ -333,7 +331,7 @@ func TestReconcile(t *testing.T) {
 			}(),
 		},
 		{
-			"Successfully reconcile with default pull policy and no env vars",
+			"Successfully reconcile with no env vars",
 			reconcile.Result{},
 			nil,
 			fake.NewFakeClientWithScheme(func() *runtime.Scheme {
@@ -347,6 +345,17 @@ func TestReconcile(t *testing.T) {
 				return s
 			}(),
 				&custompodautoscalerv1alpha1.CustomPodAutoscaler{
+					Spec: custompodautoscalerv1alpha1.CustomPodAutoscalerSpec{
+						Template: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{
+									corev1.Container{
+										Name: "test container",
+									},
+								},
+							},
+						},
+					},
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test",
 						Namespace: "test-namespace",
@@ -368,16 +377,6 @@ func TestReconcile(t *testing.T) {
 				) (reconcile.Result, error) {
 					pod, ok := obj.(*corev1.Pod)
 					if ok {
-						// Default pull policy
-						expectedPullPolicy := corev1.PullIfNotPresent
-
-						if !cmp.Equal(pod.Spec.Containers[0].ImagePullPolicy, expectedPullPolicy) {
-							t.Errorf("Pull policy mismatch (-want +got):\n%s",
-								cmp.Diff(pod.Spec.Containers[0].ImagePullPolicy,
-									expectedPullPolicy))
-							return reconcile.Result{}, nil
-						}
-
 						// Default env vars
 						expectedEnvVars := []corev1.EnvVar{
 							corev1.EnvVar{
@@ -390,10 +389,9 @@ func TestReconcile(t *testing.T) {
 							},
 						}
 
-						if !cmp.Equal(pod.Spec.Containers[0].Env, expectedEnvVars) {
-							t.Errorf("Pull policy mismatch (-want +got):\n%s",
-								cmp.Diff(pod.Spec.Containers[0].Env,
-									expectedEnvVars))
+						if !cmp.Equal(expectedEnvVars, pod.Spec.Containers[0].Env) {
+							t.Errorf("Env vars mismatch (-want +got):\n%s",
+								cmp.Diff(expectedEnvVars, pod.Spec.Containers[0].Env))
 							return reconcile.Result{}, nil
 						}
 						return reconcile.Result{}, nil
@@ -404,7 +402,7 @@ func TestReconcile(t *testing.T) {
 			}(),
 		},
 		{
-			"Successfully reconcile with setting pull policy no env vars",
+			"Successfully reconcile with env vars",
 			reconcile.Result{},
 			nil,
 			fake.NewFakeClientWithScheme(func() *runtime.Scheme {
@@ -423,80 +421,15 @@ func TestReconcile(t *testing.T) {
 						Namespace: "test-namespace",
 					},
 					Spec: custompodautoscalerv1alpha1.CustomPodAutoscalerSpec{
-						PullPolicy: corev1.PullPolicy("test pull policy"),
-					},
-				},
-			),
-			reconcile.Request{
-				NamespacedName: types.NamespacedName{
-					Name:      "test",
-					Namespace: "test-namespace",
-				},
-			},
-			func() *fakek8sReconciler {
-				reconciler := &fakek8sReconciler{}
-				reconciler.reconcile = func(
-					reqLogger logr.Logger,
-					instance *custompodautoscalerv1alpha1.CustomPodAutoscaler,
-					obj metav1.Object,
-				) (reconcile.Result, error) {
-					pod, ok := obj.(*corev1.Pod)
-					if ok {
-						expectedPullPolicy := corev1.PullPolicy("test pull policy")
-						// Check test pull policy has been set
-						if !cmp.Equal(pod.Spec.Containers[0].ImagePullPolicy, expectedPullPolicy) {
-							t.Errorf("Pull policy mismatch (-want +got):\n%s",
-								cmp.Diff(pod.Spec.Containers[0].ImagePullPolicy,
-									expectedPullPolicy))
-							return reconcile.Result{}, nil
-						}
-
-						// Default env vars
-						expectedEnvVars := []corev1.EnvVar{
-							corev1.EnvVar{
-								Name:  "scaleTargetRef",
-								Value: `{"kind":"","name":""}`,
+						Template: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{
+									corev1.Container{
+										Name: "test container",
+									},
+								},
 							},
-							corev1.EnvVar{
-								Name:  "namespace",
-								Value: "test-namespace",
-							},
-						}
-
-						if !cmp.Equal(pod.Spec.Containers[0].Env, expectedEnvVars) {
-							t.Errorf("Pull policy mismatch (-want +got):\n%s",
-								cmp.Diff(pod.Spec.Containers[0].Env,
-									expectedEnvVars))
-							return reconcile.Result{}, nil
-						}
-						return reconcile.Result{}, nil
-					}
-					return reconcile.Result{}, nil
-				}
-				return reconciler
-			}(),
-		},
-		{
-			"Successfully reconcile with setting pull policy and env vars",
-			reconcile.Result{},
-			nil,
-			fake.NewFakeClientWithScheme(func() *runtime.Scheme {
-				s := runtime.NewScheme()
-				s.AddKnownTypes(custompodautoscalerv1alpha1.SchemeGroupVersion, &custompodautoscalerv1alpha1.CustomPodAutoscaler{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test",
-						Namespace: "test-namespace",
-					},
-				})
-				return s
-			}(),
-				&custompodautoscalerv1alpha1.CustomPodAutoscaler{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "test",
-						Namespace: "test-namespace",
-					},
-					Spec: custompodautoscalerv1alpha1.CustomPodAutoscalerSpec{
-						PullPolicy: corev1.PullPolicy("test pull policy"),
+						},
 						Config: []custompodautoscalerv1alpha1.CustomPodAutoscalerConfig{
 							custompodautoscalerv1alpha1.CustomPodAutoscalerConfig{
 								Name:  "first env var",
@@ -529,15 +462,6 @@ func TestReconcile(t *testing.T) {
 				) (reconcile.Result, error) {
 					pod, ok := obj.(*corev1.Pod)
 					if ok {
-						expectedPullPolicy := corev1.PullPolicy("test pull policy")
-						// Check test pull policy has been set
-						if !cmp.Equal(pod.Spec.Containers[0].ImagePullPolicy, expectedPullPolicy) {
-							t.Errorf("Pull policy mismatch (-want +got):\n%s",
-								cmp.Diff(pod.Spec.Containers[0].ImagePullPolicy,
-									expectedPullPolicy))
-							return reconcile.Result{}, nil
-						}
-
 						expectedEnvVars := []corev1.EnvVar{
 							corev1.EnvVar{
 								Name:  "scaleTargetRef",
@@ -561,10 +485,164 @@ func TestReconcile(t *testing.T) {
 							},
 						}
 
-						if !cmp.Equal(pod.Spec.Containers[0].Env, expectedEnvVars) {
-							t.Errorf("Pull policy mismatch (-want +got):\n%s",
-								cmp.Diff(pod.Spec.Containers[0].Env,
-									expectedEnvVars))
+						if !cmp.Equal(expectedEnvVars, pod.Spec.Containers[0].Env) {
+							t.Errorf("Env vars mismatch (-want +got):\n%s",
+								cmp.Diff(expectedEnvVars, pod.Spec.Containers[0].Env))
+							return reconcile.Result{}, nil
+						}
+						return reconcile.Result{}, nil
+					}
+					return reconcile.Result{}, nil
+				}
+				return reconciler
+			}(),
+		},
+		{
+			"Successfully reconcile with labels set in the container",
+			reconcile.Result{},
+			nil,
+			fake.NewFakeClientWithScheme(func() *runtime.Scheme {
+				s := runtime.NewScheme()
+				s.AddKnownTypes(custompodautoscalerv1alpha1.SchemeGroupVersion, &custompodautoscalerv1alpha1.CustomPodAutoscaler{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "test-namespace",
+					},
+				})
+				return s
+			}(),
+				&custompodautoscalerv1alpha1.CustomPodAutoscaler{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "test-namespace",
+					},
+					Spec: custompodautoscalerv1alpha1.CustomPodAutoscalerSpec{
+						Template: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{
+									corev1.Container{
+										Name: "test container",
+									},
+								},
+							},
+							ObjectMeta: metav1.ObjectMeta{
+								Labels: map[string]string{
+									"test-label": "test",
+								},
+							},
+						},
+					},
+				},
+			),
+			reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      "test",
+					Namespace: "test-namespace",
+				},
+			},
+			func() *fakek8sReconciler {
+				reconciler := &fakek8sReconciler{}
+				reconciler.reconcile = func(
+					reqLogger logr.Logger,
+					instance *custompodautoscalerv1alpha1.CustomPodAutoscaler,
+					obj metav1.Object,
+				) (reconcile.Result, error) {
+					pod, ok := obj.(*corev1.Pod)
+					if ok {
+						expectedEnvVars := []corev1.EnvVar{
+							corev1.EnvVar{
+								Name:  "scaleTargetRef",
+								Value: `{"kind":"","name":""}`,
+							},
+							corev1.EnvVar{
+								Name:  "namespace",
+								Value: "test-namespace",
+							},
+						}
+
+						if !cmp.Equal(expectedEnvVars, pod.Spec.Containers[0].Env) {
+							t.Errorf("Env vars mismatch (-want +got):\n%s",
+								cmp.Diff(expectedEnvVars, pod.Spec.Containers[0].Env))
+							return reconcile.Result{}, nil
+						}
+						return reconcile.Result{}, nil
+					}
+					return reconcile.Result{}, nil
+				}
+				return reconciler
+			}(),
+		},
+		{
+			"Successfully reconcile with env vars set in pod spec and no config env vars",
+			reconcile.Result{},
+			nil,
+			fake.NewFakeClientWithScheme(func() *runtime.Scheme {
+				s := runtime.NewScheme()
+				s.AddKnownTypes(custompodautoscalerv1alpha1.SchemeGroupVersion, &custompodautoscalerv1alpha1.CustomPodAutoscaler{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "test-namespace",
+					},
+				})
+				return s
+			}(),
+				&custompodautoscalerv1alpha1.CustomPodAutoscaler{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "test-namespace",
+					},
+					Spec: custompodautoscalerv1alpha1.CustomPodAutoscalerSpec{
+						Template: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{
+									corev1.Container{
+										Name: "test container",
+										Env: []corev1.EnvVar{
+											corev1.EnvVar{
+												Name:  "test container env name",
+												Value: "test container env value",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			),
+			reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      "test",
+					Namespace: "test-namespace",
+				},
+			},
+			func() *fakek8sReconciler {
+				reconciler := &fakek8sReconciler{}
+				reconciler.reconcile = func(
+					reqLogger logr.Logger,
+					instance *custompodautoscalerv1alpha1.CustomPodAutoscaler,
+					obj metav1.Object,
+				) (reconcile.Result, error) {
+					pod, ok := obj.(*corev1.Pod)
+					if ok {
+						expectedEnvVars := []corev1.EnvVar{
+							corev1.EnvVar{
+								Name:  "test container env name",
+								Value: "test container env value",
+							},
+							corev1.EnvVar{
+								Name:  "scaleTargetRef",
+								Value: `{"kind":"","name":""}`,
+							},
+							corev1.EnvVar{
+								Name:  "namespace",
+								Value: "test-namespace",
+							},
+						}
+
+						if !cmp.Equal(expectedEnvVars, pod.Spec.Containers[0].Env) {
+							t.Errorf("Env vars mismatch (-want +got):\n%s",
+								cmp.Diff(expectedEnvVars, pod.Spec.Containers[0].Env))
 							return reconcile.Result{}, nil
 						}
 						return reconcile.Result{}, nil

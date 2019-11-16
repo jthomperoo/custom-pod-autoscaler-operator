@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Changed
 - Use ScaleTargetRef rather than a label selector to choose which resource to manage, consistent with Horizontal Pod Autoscaler.
+- Can now define a PodSpec rather than a Docker image.
+### Removed
+- PullPolicy removed as it can now be defined in the template PodSpec.
+- Image removed as it is now defined within a PodSpec instead.
 
 ## [0.3.0] - 2019-11-03
 ### Changed
