@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- When a resource already exists, the operator will check if the assigned CPA has been set as its owner; if it isn't it will set it, if not it will skip it. This can be used by CPAs to modify the resources for the CPA.
 
 ## [0.4.0] - 2019-11-16
 ### Changed
