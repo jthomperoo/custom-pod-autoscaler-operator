@@ -54,7 +54,32 @@ func (k *KubernetesResourceReconciler) Reconcile(
 		return reconcile.Result{}, err
 	}
 
-	// k8s object already exists - don't requeue
-	reqLogger.Info("Skip reconcile: k8s object already exists", "Namespace", obj.GetNamespace(), "Name", obj.GetName())
+	// Check if CPA set as K8s object owner
+	ownerReferences := obj.GetOwnerReferences()
+	cpaOwner := false
+	for _, owner := range ownerReferences {
+		if owner.Kind == instance.Kind && owner.APIVersion == instance.APIVersion && owner.Name == instance.Name {
+			cpaOwner = true
+			break
+		}
+	}
+
+	if !cpaOwner {
+		reqLogger.Info("CPA not set as owner, updating owner reference", "Namespace", obj.GetNamespace(), "Name", obj.GetName())
+		ownerReferences = append(ownerReferences, metav1.OwnerReference{
+			APIVersion: instance.APIVersion,
+			Kind:       instance.Kind,
+			Name:       instance.Name,
+			UID:        instance.UID,
+		})
+		obj.SetOwnerReferences(ownerReferences)
+		err = k.Client.Update(context.Background(), runtimeObj)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		return reconcile.Result{}, nil
+	}
+
+	reqLogger.Info("Skip reconcile: k8s object already exists with expected owner", "Namespace", obj.GetNamespace(), "Name", obj.GetName())
 	return reconcile.Result{}, nil
 }

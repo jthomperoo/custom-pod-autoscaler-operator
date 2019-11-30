@@ -193,7 +193,44 @@ func TestReconcile(t *testing.T) {
 			},
 		},
 		{
-			"Object already exists",
+			"Object already exists with owner not set, fail to update",
+			reconcile.Result{},
+			errors.New("Fail to update object"),
+			func() *fakeClient {
+				fclient := &fakeClient{}
+				// Client reports object already exists
+				fclient.get = func(ctx context.Context, key client.ObjectKey, obj runtime.Object) error {
+					return nil
+				}
+				// Update fails
+				fclient.update = func(ctx context.Context, obj runtime.Object) error {
+					return errors.New("Fail to update object")
+				}
+				return fclient
+			}(),
+			&runtime.Scheme{},
+			&custompodautoscalerv1alpha1.CustomPodAutoscaler{
+				TypeMeta: v1.TypeMeta{
+					Kind:       "custompodautoscaler",
+					APIVersion: "apiextensions.k8s.io/v1beta1",
+				},
+				ObjectMeta: v1.ObjectMeta{
+					Name: "testcpa",
+					UID:  "testuid",
+				},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test pod",
+					Namespace: "test namespace",
+				},
+			},
+			func(owner, object v1.Object, scheme *runtime.Scheme) error {
+				return nil
+			},
+		},
+		{
+			"Object already exists with owner not set, successful update",
 			reconcile.Result{},
 			nil,
 			fake.NewFakeClientWithScheme(func() *runtime.Scheme {
@@ -219,6 +256,56 @@ func TestReconcile(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test pod",
 					Namespace: "test namespace",
+				},
+			},
+			func(owner, object v1.Object, scheme *runtime.Scheme) error {
+				return nil
+			},
+		},
+		{
+			"Object already exists with owner set",
+			reconcile.Result{},
+			nil,
+			fake.NewFakeClientWithScheme(func() *runtime.Scheme {
+				s := runtime.NewScheme()
+				s.AddKnownTypes(custompodautoscalerv1alpha1.SchemeGroupVersion, &corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test pod",
+						Namespace: "test namespace",
+					},
+				})
+				return s
+			}(),
+				&corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test pod",
+						Namespace: "test namespace",
+					},
+				},
+			),
+			&runtime.Scheme{},
+			&custompodautoscalerv1alpha1.CustomPodAutoscaler{
+				TypeMeta: v1.TypeMeta{
+					Kind:       "custompodautoscaler",
+					APIVersion: "apiextensions.k8s.io/v1beta1",
+				},
+				ObjectMeta: v1.ObjectMeta{
+					Name: "testcpa",
+					UID:  "testuid",
+				},
+			},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test pod",
+					Namespace: "test namespace",
+					OwnerReferences: []v1.OwnerReference{
+						v1.OwnerReference{
+							Kind:       "custompodautoscaler",
+							APIVersion: "apiextensions.k8s.io/v1beta1",
+							Name:       "testcpa",
+							UID:        "testuid",
+						},
+					},
 				},
 			},
 			func(owner, object v1.Object, scheme *runtime.Scheme) error {
