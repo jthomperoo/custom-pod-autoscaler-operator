@@ -12,7 +12,7 @@ The Custom Pod Autoscaler Operator is part of the [Custom Pod Autoscaler Framewo
 ### Quick start
 Run this to install the Operator and Custom Pod Autoscaler definition with cluster-wide scope on your cluster:
 ```
-VERSION=0.4.0
+VERSION=v0.5.0
 curl -L "https://github.com/jthomperoo/custom-pod-autoscaler-operator/releases/download/${VERSION}/cluster.tar.gz" | tar xvz --to-command 'kubectl apply -f -'
 ```
 ### Advanced
