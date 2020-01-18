@@ -184,12 +184,12 @@ func (r *ReconcileCustomPodAutoscaler) Reconcile(request reconcile.Request) (rec
 		Rules: []rbacv1.PolicyRule{
 			rbacv1.PolicyRule{
 				APIGroups: []string{""},
-				Resources: []string{"pods"},
+				Resources: []string{"pods", "replicationcontrollers", "replicationcontrollers/scale"},
 				Verbs:     []string{"*"},
 			},
 			rbacv1.PolicyRule{
 				APIGroups: []string{"apps"},
-				Resources: []string{"deployments", "daemonsets", "replicasets", "statefulsets"},
+				Resources: []string{"deployments", "deployments/scale", "replicasets", "replicasets/scale", "statefulsets", "statefulsets/scale"},
 				Verbs:     []string{"*"},
 			},
 		},
