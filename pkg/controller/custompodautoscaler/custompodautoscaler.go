@@ -64,6 +64,36 @@ type ReconcileCustomPodAutoscaler struct {
 // ControllerLinker is used to create a new controller linked to the manager provided
 type ControllerLinker func(name string, mgr manager.Manager, options controller.Options) (controller.Controller, error)
 
+var PrimaryPred = predicate.Funcs{
+	UpdateFunc: func(e event.UpdateEvent) bool {
+	return true
+	},
+	DeleteFunc: func(e event.DeleteEvent) bool {
+	return true
+	},
+	CreateFunc: func(e event.CreateEvent) bool {
+	return true
+	},
+	GenericFunc: func(e event.GenericEvent) bool {
+	return false
+	},
+}
+
+var SecondaryPred = predicate.Funcs{
+	UpdateFunc: func(e event.UpdateEvent) bool {
+	return false
+	},
+	DeleteFunc: func(e event.DeleteEvent) bool {
+	return true
+	},
+	CreateFunc: func(e event.CreateEvent) bool {
+	return false
+	},
+	GenericFunc: func(e event.GenericEvent) bool {
+	return false
+	},
+}
+
 // Add creates a new CustomPodAutoscaler Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
 func Add(mgr manager.Manager, linker ControllerLinker) error {
@@ -87,38 +117,8 @@ func Add(mgr manager.Manager, linker ControllerLinker) error {
 		return err
 	}
 
-	primaryPred := predicate.Funcs{
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			return true
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			return true
-		},
-		CreateFunc: func(e event.CreateEvent) bool {
-			return true
-		},
-		GenericFunc: func(e event.GenericEvent) bool {
-			return false
-		},
-	}
-
-	secondaryPred := predicate.Funcs{
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			return false
-		},
-		DeleteFunc: func(e event.DeleteEvent) bool {
-			return true
-		},
-		CreateFunc: func(e event.CreateEvent) bool {
-			return false
-		},
-		GenericFunc: func(e event.GenericEvent) bool {
-			return false
-		},
-	}
-
 	// Watch for changes to primary resource CustomPodAutoscaler
-	err = c.Watch(&source.Kind{Type: &custompodautoscalerv1alpha1.CustomPodAutoscaler{}}, &handler.EnqueueRequestForObject{}, primaryPred)
+	err = c.Watch(&source.Kind{Type: &custompodautoscalerv1alpha1.CustomPodAutoscaler{}}, &handler.EnqueueRequestForObject{}, PrimaryPred)
 	if err != nil {
 		return err
 	}
@@ -127,7 +127,7 @@ func Add(mgr manager.Manager, linker ControllerLinker) error {
 	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &custompodautoscalerv1alpha1.CustomPodAutoscaler{},
-	}, secondaryPred)
+	}, SecondaryPred)
 	if err != nil {
 		return err
 	}
@@ -136,7 +136,7 @@ func Add(mgr manager.Manager, linker ControllerLinker) error {
 	err = c.Watch(&source.Kind{Type: &corev1.ServiceAccount{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &custompodautoscalerv1alpha1.CustomPodAutoscaler{},
-	}, secondaryPred)
+	}, SecondaryPred)
 	if err != nil {
 		return err
 	}
@@ -145,7 +145,7 @@ func Add(mgr manager.Manager, linker ControllerLinker) error {
 	err = c.Watch(&source.Kind{Type: &rbacv1.Role{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &custompodautoscalerv1alpha1.CustomPodAutoscaler{},
-	}, secondaryPred)
+	}, SecondaryPred)
 	if err != nil {
 		return err
 	}
@@ -154,7 +154,7 @@ func Add(mgr manager.Manager, linker ControllerLinker) error {
 	err = c.Watch(&source.Kind{Type: &rbacv1.RoleBinding{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &custompodautoscalerv1alpha1.CustomPodAutoscaler{},
-	}, secondaryPred)
+	}, SecondaryPred)
 	if err != nil {
 		return err
 	}

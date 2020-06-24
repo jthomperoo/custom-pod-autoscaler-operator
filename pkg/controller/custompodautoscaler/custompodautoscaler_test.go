@@ -20,6 +20,7 @@ package custompodautoscaler_test
 import (
 	"context"
 	"errors"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -46,6 +47,52 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 	admissiontypes "sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
 )
+
+func TestPrimaryPredicate(t *testing.T) {
+	result := custompodautoscaler.PrimaryPred.Create(event.CreateEvent{})
+	if !cmp.Equal(result, true) {
+		t.Errorf("Boolean mismatch (-want +got):\n%s", cmp.Diff(result, true))
+		return
+	}
+	result = custompodautoscaler.PrimaryPred.Delete(event.DeleteEvent{})
+	if !cmp.Equal(result, true) {
+		t.Errorf("Boolean mismatch (-want +got):\n%s", cmp.Diff(result, true))
+		return
+	}
+	result = custompodautoscaler.PrimaryPred.Update(event.UpdateEvent{})
+	if !cmp.Equal(result, true) {
+		t.Errorf("Boolean mismatch (-want +got):\n%s", cmp.Diff(result, true))
+		return
+	}
+	result = custompodautoscaler.PrimaryPred.Generic(event.GenericEvent{})
+	if !cmp.Equal(result, false) {
+		t.Errorf("Boolean mismatch (-want +got):\n%s", cmp.Diff(result, false))
+		return
+	}
+}
+
+func TestSecondaryPredicate(t *testing.T) {
+	result := custompodautoscaler.SecondaryPred.Create(event.CreateEvent{})
+	if !cmp.Equal(result, false) {
+		t.Errorf("Boolean mismatch (-want +got):\n%s", cmp.Diff(result, false))
+		return
+	}
+	result = custompodautoscaler.SecondaryPred.Delete(event.DeleteEvent{})
+	if !cmp.Equal(result, true) {
+		t.Errorf("Boolean mismatch (-want +got):\n%s", cmp.Diff(result, true))
+		return
+	}
+	result = custompodautoscaler.SecondaryPred.Update(event.UpdateEvent{})
+	if !cmp.Equal(result, false) {
+		t.Errorf("Boolean mismatch (-want +got):\n%s", cmp.Diff(result, false))
+		return
+	}
+	result = custompodautoscaler.SecondaryPred.Generic(event.GenericEvent{})
+	if !cmp.Equal(result, false) {
+		t.Errorf("Boolean mismatch (-want +got):\n%s", cmp.Diff(result, false))
+		return
+	}
+}
 
 type k8sReconciler interface {
 	Reconcile(
