@@ -52,6 +52,8 @@ type k8sReconciler interface {
 		reqLogger logr.Logger,
 		instance *custompodautoscalerv1alpha1.CustomPodAutoscaler,
 		obj metav1.Object,
+		shouldProvision bool,
+		updatable bool,
 	) (reconcile.Result, error)
 }
 
@@ -60,6 +62,8 @@ type fakek8sReconciler struct {
 		reqLogger logr.Logger,
 		instance *custompodautoscalerv1alpha1.CustomPodAutoscaler,
 		obj metav1.Object,
+		shouldProvision bool,
+		updatable bool,
 	) (reconcile.Result, error)
 }
 
@@ -67,8 +71,10 @@ func (f *fakek8sReconciler) Reconcile(
 	reqLogger logr.Logger,
 	instance *custompodautoscalerv1alpha1.CustomPodAutoscaler,
 	obj metav1.Object,
+	shouldProvision bool,
+	updatable bool,
 ) (reconcile.Result, error) {
-	return f.reconcile(reqLogger, instance, obj)
+	return f.reconcile(reqLogger, instance, obj, shouldProvision, updatable)
 }
 
 type fakeClient struct {
@@ -194,6 +200,8 @@ func TestReconcile(t *testing.T) {
 					reqLogger logr.Logger,
 					instance *custompodautoscalerv1alpha1.CustomPodAutoscaler,
 					obj metav1.Object,
+					shouldProvision bool,
+					updatable bool,
 				) (reconcile.Result, error) {
 					_, ok := obj.(*corev1.ServiceAccount)
 					if ok {
@@ -237,6 +245,8 @@ func TestReconcile(t *testing.T) {
 					reqLogger logr.Logger,
 					instance *custompodautoscalerv1alpha1.CustomPodAutoscaler,
 					obj metav1.Object,
+					shouldProvision bool,
+					updatable bool,
 				) (reconcile.Result, error) {
 					_, ok := obj.(*rbacv1.Role)
 					if ok {
@@ -280,6 +290,8 @@ func TestReconcile(t *testing.T) {
 					reqLogger logr.Logger,
 					instance *custompodautoscalerv1alpha1.CustomPodAutoscaler,
 					obj metav1.Object,
+					shouldProvision bool,
+					updatable bool,
 				) (reconcile.Result, error) {
 					_, ok := obj.(*rbacv1.RoleBinding)
 					if ok {
@@ -321,6 +333,8 @@ func TestReconcile(t *testing.T) {
 					reqLogger logr.Logger,
 					instance *custompodautoscalerv1alpha1.CustomPodAutoscaler,
 					obj metav1.Object,
+					shouldProvision bool,
+					updatable bool,
 				) (reconcile.Result, error) {
 					_, ok := obj.(*corev1.Pod)
 					if ok {
@@ -375,6 +389,8 @@ func TestReconcile(t *testing.T) {
 					reqLogger logr.Logger,
 					instance *custompodautoscalerv1alpha1.CustomPodAutoscaler,
 					obj metav1.Object,
+					shouldProvision bool,
+					updatable bool,
 				) (reconcile.Result, error) {
 					pod, ok := obj.(*corev1.Pod)
 					if ok {
@@ -460,6 +476,8 @@ func TestReconcile(t *testing.T) {
 					reqLogger logr.Logger,
 					instance *custompodautoscalerv1alpha1.CustomPodAutoscaler,
 					obj metav1.Object,
+					shouldProvision bool,
+					updatable bool,
 				) (reconcile.Result, error) {
 					pod, ok := obj.(*corev1.Pod)
 					if ok {
@@ -547,6 +565,8 @@ func TestReconcile(t *testing.T) {
 					reqLogger logr.Logger,
 					instance *custompodautoscalerv1alpha1.CustomPodAutoscaler,
 					obj metav1.Object,
+					shouldProvision bool,
+					updatable bool,
 				) (reconcile.Result, error) {
 					pod, ok := obj.(*corev1.Pod)
 					if ok {
@@ -623,6 +643,8 @@ func TestReconcile(t *testing.T) {
 					reqLogger logr.Logger,
 					instance *custompodautoscalerv1alpha1.CustomPodAutoscaler,
 					obj metav1.Object,
+					shouldProvision bool,
+					updatable bool,
 				) (reconcile.Result, error) {
 					pod, ok := obj.(*corev1.Pod)
 					if ok {

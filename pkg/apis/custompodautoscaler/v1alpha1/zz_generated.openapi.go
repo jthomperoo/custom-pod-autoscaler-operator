@@ -135,6 +135,30 @@ func schema_pkg_apis_custompodautoscaler_v1alpha1_CustomPodAutoscalerSpec(ref co
 							},
 						},
 					},
+					"provisionRole": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"boolean"},
+							Format: "",
+						},
+					},
+					"provisionRoleBinding": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"boolean"},
+							Format: "",
+						},
+					},
+					"provisionServiceAccount": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"boolean"},
+							Format: "",
+						},
+					},
+					"provisionPod": {
+						SchemaProps: spec.SchemaProps{
+							Type:   []string{"boolean"},
+							Format: "",
+						},
+					},
 				},
 				Required: []string{"template", "scaleTargetRef"},
 			},

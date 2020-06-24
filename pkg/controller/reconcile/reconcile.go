@@ -18,13 +18,12 @@ package reconcile
 
 import (
 	"context"
-
-	custompodautoscalerv1alpha1 "github.com/jthomperoo/custom-pod-autoscaler-operator/pkg/apis/custompodautoscaler/v1alpha1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"github.com/go-logr/logr"
+	custompodautoscalerv1alpha1 "github.com/jthomperoo/custom-pod-autoscaler-operator/pkg/apis/custompodautoscaler/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -46,7 +45,10 @@ func (k *KubernetesResourceReconciler) Reconcile(
 	reqLogger logr.Logger,
 	instance *custompodautoscalerv1alpha1.CustomPodAutoscaler,
 	obj metav1.Object,
+	shouldProvision bool,
+	updatable bool,
 ) (reconcile.Result, error) {
+	runtimeObj := obj.(runtime.Object)
 	// Set CustomPodAutoscaler instance as the owner and controller
 	err := k.ControllerReferencer(instance, obj, k.Scheme)
 	if err != nil {
@@ -54,22 +56,65 @@ func (k *KubernetesResourceReconciler) Reconcile(
 	}
 
 	// Check if k8s object already exists
-	runtimeObj := obj.(runtime.Object)
-	err = k.Client.Get(context.Background(), types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}, runtimeObj)
+	existingObject := runtimeObj.DeepCopyObject()
+	err = k.Client.Get(context.Background(), types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}, existingObject)
 	if err != nil {
-		if errors.IsNotFound(err) {
-			// k8s object doesn't exist, create a new one
-			reqLogger.Info("Creating a new k8s object ", "Namespace", obj.GetNamespace(), "Name", obj.GetName())
-			err = k.Client.Create(context.Background(), runtimeObj)
+		if !errors.IsNotFound(err) {
+			return reconcile.Result{}, err
+		}
+		// Object does not exist
+		if !shouldProvision {
+			reqLogger.Info("Object not found, no provisioning of resource ", "Namespace", obj.GetNamespace(), "Name", obj.GetName())
+			// Should not provision a new object, wait for existing
+			return reconcile.Result{}, nil
+		}
+		// Should provision, create a new object
+		reqLogger.Info("Creating a new k8s object ", "Namespace", obj.GetNamespace(), "Name", obj.GetName())
+		err = k.Client.Create(context.Background(), runtimeObj)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+		// K8s object created successfully - don't requeue
+		return reconcile.Result{}, nil
+	}
+
+	if existingObject.GetObjectKind().GroupVersionKind().Group == "" &&
+		existingObject.GetObjectKind().GroupVersionKind().Version == "v1" &&
+		existingObject.GetObjectKind().GroupVersionKind().Kind == "Pod" {
+		pod := existingObject.(*corev1.Pod)
+		if !pod.ObjectMeta.DeletionTimestamp.IsZero() {
+			reqLogger.Info("Pod currently being deleted ", "Namespace", obj.GetNamespace(), "Name", obj.GetName())
+			return reconcile.Result{}, nil
+		}
+	}
+
+	// Object already exists, update
+	if shouldProvision {
+		// Only update if object should be provisioned
+		if updatable {
+			reqLogger.Info("Updating k8s object ", "Namespace", obj.GetNamespace(), "Name", obj.GetName())
+			// If object can be updated
+			err = k.Client.Update(context.Background(), runtimeObj)
 			if err != nil {
 				return reconcile.Result{}, err
 			}
-			// k8s object created successfully - don't requeue
+			// Successful update, don't requeue
 			return reconcile.Result{}, nil
 		}
-		return reconcile.Result{}, err
+		reqLogger.Info("Deleting k8s object ", "Namespace", obj.GetNamespace(), "Name", obj.GetName())
+
+		// If object can't be updated, delete and make new
+		err = k.Client.Delete(context.Background(), existingObject)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+
+		return reconcile.Result{}, nil
 	}
 
+	// Object should not be provisioned, instead update owner reference of
+	// existing object
+	obj = existingObject.(metav1.Object)
 	// Check if CPA set as K8s object owner
 	ownerReferences := obj.GetOwnerReferences()
 	cpaOwner := false
@@ -89,7 +134,7 @@ func (k *KubernetesResourceReconciler) Reconcile(
 			UID:        instance.UID,
 		})
 		obj.SetOwnerReferences(ownerReferences)
-		err = k.Client.Update(context.Background(), runtimeObj)
+		err = k.Client.Update(context.Background(), existingObject)
 		if err != nil {
 			return reconcile.Result{}, err
 		}

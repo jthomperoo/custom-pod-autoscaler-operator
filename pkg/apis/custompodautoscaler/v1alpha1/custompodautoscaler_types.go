@@ -39,7 +39,11 @@ type CustomPodAutoscalerSpec struct {
 	// ScaleTargetRef defining what the Custom Pod Autoscaler should manage
 	ScaleTargetRef autoscaling.CrossVersionObjectReference `json:"scaleTargetRef"`
 	// Configuration options to be delivered as environment variables to the container
-	Config []CustomPodAutoscalerConfig `json:"config,omitempty"`
+	Config                  []CustomPodAutoscalerConfig `json:"config,omitempty"`
+	ProvisionRole           *bool                       `json:"provisionRole,omitempty"`
+	ProvisionRoleBinding    *bool                       `json:"provisionRoleBinding,omitempty"`
+	ProvisionServiceAccount *bool                       `json:"provisionServiceAccount,omitempty"`
+	ProvisionPod            *bool                       `json:"provisionPod,omitempty"`
 }
 
 // CustomPodAutoscalerStatus defines the observed state of CustomPodAutoscaler

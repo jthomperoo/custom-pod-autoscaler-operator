@@ -32,8 +32,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 	"sigs.k8s.io/controller-runtime/pkg/source"
@@ -44,6 +46,8 @@ type k8sReconciler interface {
 		reqLogger logr.Logger,
 		instance *custompodautoscalerv1alpha1.CustomPodAutoscaler,
 		obj metav1.Object,
+		shouldProvision bool,
+		updateable bool,
 	) (reconcile.Result, error)
 }
 
@@ -83,8 +87,38 @@ func Add(mgr manager.Manager, linker ControllerLinker) error {
 		return err
 	}
 
+	primaryPred := predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			return true
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			return true
+		},
+		CreateFunc: func(e event.CreateEvent) bool {
+			return true
+		},
+		GenericFunc: func(e event.GenericEvent) bool {
+			return false
+		},
+	}
+
+	secondaryPred := predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			return false
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			return true
+		},
+		CreateFunc: func(e event.CreateEvent) bool {
+			return false
+		},
+		GenericFunc: func(e event.GenericEvent) bool {
+			return false
+		},
+	}
+
 	// Watch for changes to primary resource CustomPodAutoscaler
-	err = c.Watch(&source.Kind{Type: &custompodautoscalerv1alpha1.CustomPodAutoscaler{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &custompodautoscalerv1alpha1.CustomPodAutoscaler{}}, &handler.EnqueueRequestForObject{}, primaryPred)
 	if err != nil {
 		return err
 	}
@@ -93,7 +127,7 @@ func Add(mgr manager.Manager, linker ControllerLinker) error {
 	err = c.Watch(&source.Kind{Type: &corev1.Pod{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &custompodautoscalerv1alpha1.CustomPodAutoscaler{},
-	})
+	}, secondaryPred)
 	if err != nil {
 		return err
 	}
@@ -102,7 +136,7 @@ func Add(mgr manager.Manager, linker ControllerLinker) error {
 	err = c.Watch(&source.Kind{Type: &corev1.ServiceAccount{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &custompodautoscalerv1alpha1.CustomPodAutoscaler{},
-	})
+	}, secondaryPred)
 	if err != nil {
 		return err
 	}
@@ -111,7 +145,7 @@ func Add(mgr manager.Manager, linker ControllerLinker) error {
 	err = c.Watch(&source.Kind{Type: &rbacv1.Role{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &custompodautoscalerv1alpha1.CustomPodAutoscaler{},
-	})
+	}, secondaryPred)
 	if err != nil {
 		return err
 	}
@@ -120,7 +154,7 @@ func Add(mgr manager.Manager, linker ControllerLinker) error {
 	err = c.Watch(&source.Kind{Type: &rbacv1.RoleBinding{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &custompodautoscalerv1alpha1.CustomPodAutoscaler{},
-	})
+	}, secondaryPred)
 	if err != nil {
 		return err
 	}
@@ -150,6 +184,23 @@ func (r *ReconcileCustomPodAutoscaler) Reconcile(request reconcile.Request) (rec
 		return reconcile.Result{}, err
 	}
 
+	if instance.Spec.ProvisionRole == nil {
+		defaultVal := true
+		instance.Spec.ProvisionRole = &defaultVal
+	}
+	if instance.Spec.ProvisionRoleBinding == nil {
+		defaultVal := true
+		instance.Spec.ProvisionRoleBinding = &defaultVal
+	}
+	if instance.Spec.ProvisionServiceAccount == nil {
+		defaultVal := true
+		instance.Spec.ProvisionServiceAccount = &defaultVal
+	}
+	if instance.Spec.ProvisionPod == nil {
+		defaultVal := true
+		instance.Spec.ProvisionPod = &defaultVal
+	}
+
 	// Parse scaleTargetRef
 	scaleTargetRef, err := json.Marshal(instance.Spec.ScaleTargetRef)
 	if err != nil {
@@ -169,7 +220,7 @@ func (r *ReconcileCustomPodAutoscaler) Reconcile(request reconcile.Request) (rec
 			Labels:    labels,
 		},
 	}
-	result, err := r.KubernetesResourceReconciler.Reconcile(reqLogger, instance, serviceAccount)
+	result, err := r.KubernetesResourceReconciler.Reconcile(reqLogger, instance, serviceAccount, *instance.Spec.ProvisionServiceAccount, true)
 	if err != nil {
 		return result, err
 	}
@@ -182,19 +233,19 @@ func (r *ReconcileCustomPodAutoscaler) Reconcile(request reconcile.Request) (rec
 			Labels:    labels,
 		},
 		Rules: []rbacv1.PolicyRule{
-			rbacv1.PolicyRule{
+			{
 				APIGroups: []string{""},
 				Resources: []string{"pods", "replicationcontrollers", "replicationcontrollers/scale"},
 				Verbs:     []string{"*"},
 			},
-			rbacv1.PolicyRule{
+			{
 				APIGroups: []string{"apps"},
 				Resources: []string{"deployments", "deployments/scale", "replicasets", "replicasets/scale", "statefulsets", "statefulsets/scale"},
 				Verbs:     []string{"*"},
 			},
 		},
 	}
-	result, err = r.KubernetesResourceReconciler.Reconcile(reqLogger, instance, role)
+	result, err = r.KubernetesResourceReconciler.Reconcile(reqLogger, instance, role, *instance.Spec.ProvisionRole, true)
 	if err != nil {
 		return result, err
 	}
@@ -207,7 +258,7 @@ func (r *ReconcileCustomPodAutoscaler) Reconcile(request reconcile.Request) (rec
 			Labels:    labels,
 		},
 		Subjects: []rbacv1.Subject{
-			rbacv1.Subject{
+			{
 				Kind:      "ServiceAccount",
 				Name:      instance.Name,
 				Namespace: instance.Namespace,
@@ -219,7 +270,7 @@ func (r *ReconcileCustomPodAutoscaler) Reconcile(request reconcile.Request) (rec
 			APIGroup: "rbac.authorization.k8s.io",
 		},
 	}
-	result, err = r.KubernetesResourceReconciler.Reconcile(reqLogger, instance, roleBinding)
+	result, err = r.KubernetesResourceReconciler.Reconcile(reqLogger, instance, roleBinding, *instance.Spec.ProvisionRoleBinding, true)
 	if err != nil {
 		return result, err
 	}
@@ -273,7 +324,7 @@ func (r *ReconcileCustomPodAutoscaler) Reconcile(request reconcile.Request) (rec
 		ObjectMeta: objectMeta,
 		Spec:       podSpec,
 	}
-	result, err = r.KubernetesResourceReconciler.Reconcile(reqLogger, instance, pod)
+	result, err = r.KubernetesResourceReconciler.Reconcile(reqLogger, instance, pod, *instance.Spec.ProvisionPod, false)
 	if err != nil {
 		return result, err
 	}
@@ -284,11 +335,11 @@ func (r *ReconcileCustomPodAutoscaler) Reconcile(request reconcile.Request) (rec
 // newEnvVars builds a list of environment variables from the Spec
 func cpaEnvVars(cr *custompodautoscalerv1alpha1.CustomPodAutoscaler, scaleTargetRef string) []corev1.EnvVar {
 	envVars := []corev1.EnvVar{
-		corev1.EnvVar{
+		{
 			Name:  "scaleTargetRef",
 			Value: scaleTargetRef,
 		},
-		corev1.EnvVar{
+		{
 			Name:  "namespace",
 			Value: cr.Namespace,
 		},

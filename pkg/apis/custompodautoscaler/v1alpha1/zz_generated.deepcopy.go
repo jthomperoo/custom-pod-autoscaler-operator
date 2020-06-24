@@ -110,6 +110,26 @@ func (in *CustomPodAutoscalerSpec) DeepCopyInto(out *CustomPodAutoscalerSpec) {
 		*out = make([]CustomPodAutoscalerConfig, len(*in))
 		copy(*out, *in)
 	}
+	if in.ProvisionRole != nil {
+		in, out := &in.ProvisionRole, &out.ProvisionRole
+		*out = new(bool)
+		**out = **in
+	}
+	if in.ProvisionRoleBinding != nil {
+		in, out := &in.ProvisionRoleBinding, &out.ProvisionRoleBinding
+		*out = new(bool)
+		**out = **in
+	}
+	if in.ProvisionServiceAccount != nil {
+		in, out := &in.ProvisionServiceAccount, &out.ProvisionServiceAccount
+		*out = new(bool)
+		**out = **in
+	}
+	if in.ProvisionPod != nil {
+		in, out := &in.ProvisionPod, &out.ProvisionPod
+		*out = new(bool)
+		**out = **in
+	}
 	return
 }
 
