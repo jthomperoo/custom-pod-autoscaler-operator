@@ -50,6 +50,14 @@ spec:
                 - value
                 type: object
               type: array
+            provisionPod:
+              type: boolean
+            provisionRole:
+              type: boolean
+            provisionRoleBinding:
+              type: boolean
+            provisionServiceAccount:
+              type: boolean
             scaleTargetRef:
               description: ScaleTargetRef defining what the Custom Pod Autoscaler
                 should manage
