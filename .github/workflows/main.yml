@@ -15,6 +15,11 @@ jobs:
         go-version: 1.13
       id: go
 
+    - uses: azure/setup-helm@v1
+      with:
+        version: 'v3.2.3'
+      id: helm
+
     - name: Get build dependencies
       run: |
         # operator-sdk
@@ -92,10 +97,6 @@ jobs:
       run: |
         mkdir dist dist/cluster dist/namespace
 
-        # Copy cluster/namespace scope config
-        cp -r deploy/cluster/* deploy/crd/* dist/cluster
-        cp -r deploy/namespace/* deploy/crd/* dist/namespace
-
         # Variables to sub into k8s templates
         if [ ${{ github.event_name }} == "release" ]; then
           # github.ref is in the form refs/tags/VERSION, so apply regex to just get version
@@ -105,26 +106,31 @@ jobs:
         fi
         export VERSION=${VERSION}
 
-        # Substitute in variaibles
-        for f in $(find dist/ -name \*.yaml -print); do
-          envsubst < ${f} > ${f}.tmp && mv ${f}.tmp ${f}
-        done
+        sed -i "/version: 0.0.0/c\version: ${VERSION}" Chart.yaml
+        helm package helm/
+        helm template helm/ --set mode=cluster > cluster.yaml
+        helm template helm/ --set mode=namespaced > namespaced.yaml
 
-        tar -czvf cluster.tar.gz dist/cluster/*
-        tar -czvf namespace.tar.gz dist/namespace/*
+    - name: Deploy helm package
+      if: github.event_name == 'release' && github.repository == 'jthomperoo/custom-pod-autoscaler-operator'
+      uses: Shopify/upload-to-release@1.0.0
+      with:
+        name: custom-pod-autoscaler-operator-${{ github.event.release.tag_name }}.tgz
+        path: custom-pod-autoscaler-operator-${{ github.event.release.tag_name }}.tgz
+        repo-token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Deploy cluster-scope YAML config
       if: github.event_name == 'release' && github.repository == 'jthomperoo/custom-pod-autoscaler-operator'
       uses: Shopify/upload-to-release@1.0.0
       with:
-        name: cluster.tar.gz
-        path: cluster.tar.gz
+        name: cluster.yaml
+        path: cluster.yaml
         repo-token: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Deploy namespace-scope YAML config
       if: github.event_name == 'release' && github.repository == 'jthomperoo/custom-pod-autoscaler-operator'
       uses: Shopify/upload-to-release@1.0.0
       with:
-        name: namespace.tar.gz
-        path: namespace.tar.gz
+        name: namespaced.yaml
+        path: namespaced.yaml
         repo-token: ${{ secrets.GITHUB_TOKEN }}
