@@ -58,7 +58,7 @@ jobs:
           VERSION=$(git rev-parse --short ${{ github.sha }})
         fi
 
-        make VERSION=${VERSION}
+        make docker VERSION=${VERSION}
 
     - uses: codecov/codecov-action@v1.0.3
       if: github.repository == 'jthomperoo/custom-pod-autoscaler-operator'
