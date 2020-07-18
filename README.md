@@ -23,7 +23,8 @@ kubectl apply -f https://github.com/jthomperoo/custom-pod-autoscaler-operator/re
 Or if you prefer using helm:
 ```
 VERSION=v0.6.0
-helm install https://github.com/jthomperoo/custom-pod-autoscaler-operator/releases/download/${VERSION}/custom-pod-autoscaler-operator-${VERSION}.tgz
+HELM_CHART=custom-pod-autoscaler-operator
+helm install ${HELM_CHART} https://github.com/jthomperoo/custom-pod-autoscaler-operator/releases/download/${VERSION}/custom-pod-autoscaler-operator-${VERSION}.tgz
 ```
 
 ### Advanced
