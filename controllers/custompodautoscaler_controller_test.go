@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Custom Pod Autoscaler Authors.
+Copyright 2020 The Custom Pod Autoscaler Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,9 +13,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-// +build unit
 
-package custompodautoscaler_test
+package controllers_test
 
 import (
 	"context"
@@ -25,46 +24,36 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"
-	custompodautoscalerv1alpha1 "github.com/jthomperoo/custom-pod-autoscaler-operator/pkg/apis/custompodautoscaler/v1alpha1"
-	"github.com/jthomperoo/custom-pod-autoscaler-operator/pkg/controller/custompodautoscaler"
+	custompodautoscalercomv1 "github.com/jthomperoo/custom-pod-autoscaler-operator/api/v1"
+	"github.com/jthomperoo/custom-pod-autoscaler-operator/controllers"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/record"
-	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
-	"sigs.k8s.io/controller-runtime/pkg/source"
-	admissiontypes "sigs.k8s.io/controller-runtime/pkg/webhook/admission/types"
 )
 
 func TestPrimaryPredicate(t *testing.T) {
-	result := custompodautoscaler.PrimaryPred.Create(event.CreateEvent{})
+	result := controllers.PrimaryPred.Create(event.CreateEvent{})
 	if !cmp.Equal(result, true) {
 		t.Errorf("Boolean mismatch (-want +got):\n%s", cmp.Diff(result, true))
 		return
 	}
-	result = custompodautoscaler.PrimaryPred.Delete(event.DeleteEvent{})
+	result = controllers.PrimaryPred.Delete(event.DeleteEvent{})
 	if !cmp.Equal(result, true) {
 		t.Errorf("Boolean mismatch (-want +got):\n%s", cmp.Diff(result, true))
 		return
 	}
-	result = custompodautoscaler.PrimaryPred.Update(event.UpdateEvent{})
+	result = controllers.PrimaryPred.Update(event.UpdateEvent{})
 	if !cmp.Equal(result, true) {
 		t.Errorf("Boolean mismatch (-want +got):\n%s", cmp.Diff(result, true))
 		return
 	}
-	result = custompodautoscaler.PrimaryPred.Generic(event.GenericEvent{})
+	result = controllers.PrimaryPred.Generic(event.GenericEvent{})
 	if !cmp.Equal(result, false) {
 		t.Errorf("Boolean mismatch (-want +got):\n%s", cmp.Diff(result, false))
 		return
@@ -72,22 +61,22 @@ func TestPrimaryPredicate(t *testing.T) {
 }
 
 func TestSecondaryPredicate(t *testing.T) {
-	result := custompodautoscaler.SecondaryPred.Create(event.CreateEvent{})
+	result := controllers.SecondaryPred.Create(event.CreateEvent{})
 	if !cmp.Equal(result, false) {
 		t.Errorf("Boolean mismatch (-want +got):\n%s", cmp.Diff(result, false))
 		return
 	}
-	result = custompodautoscaler.SecondaryPred.Delete(event.DeleteEvent{})
+	result = controllers.SecondaryPred.Delete(event.DeleteEvent{})
 	if !cmp.Equal(result, true) {
 		t.Errorf("Boolean mismatch (-want +got):\n%s", cmp.Diff(result, true))
 		return
 	}
-	result = custompodautoscaler.SecondaryPred.Update(event.UpdateEvent{})
+	result = controllers.SecondaryPred.Update(event.UpdateEvent{})
 	if !cmp.Equal(result, false) {
 		t.Errorf("Boolean mismatch (-want +got):\n%s", cmp.Diff(result, false))
 		return
 	}
-	result = custompodautoscaler.SecondaryPred.Generic(event.GenericEvent{})
+	result = controllers.SecondaryPred.Generic(event.GenericEvent{})
 	if !cmp.Equal(result, false) {
 		t.Errorf("Boolean mismatch (-want +got):\n%s", cmp.Diff(result, false))
 		return
@@ -97,7 +86,7 @@ func TestSecondaryPredicate(t *testing.T) {
 type k8sReconciler interface {
 	Reconcile(
 		reqLogger logr.Logger,
-		instance *custompodautoscalerv1alpha1.CustomPodAutoscaler,
+		instance *custompodautoscalercomv1.CustomPodAutoscaler,
 		obj metav1.Object,
 		shouldProvision bool,
 		updatable bool,
@@ -107,7 +96,7 @@ type k8sReconciler interface {
 type fakek8sReconciler struct {
 	reconcile func(
 		reqLogger logr.Logger,
-		instance *custompodautoscalerv1alpha1.CustomPodAutoscaler,
+		instance *custompodautoscalercomv1.CustomPodAutoscaler,
 		obj metav1.Object,
 		shouldProvision bool,
 		updatable bool,
@@ -116,7 +105,7 @@ type fakek8sReconciler struct {
 
 func (f *fakek8sReconciler) Reconcile(
 	reqLogger logr.Logger,
-	instance *custompodautoscalerv1alpha1.CustomPodAutoscaler,
+	instance *custompodautoscalercomv1.CustomPodAutoscaler,
 	obj metav1.Object,
 	shouldProvision bool,
 	updatable bool,
@@ -125,32 +114,42 @@ func (f *fakek8sReconciler) Reconcile(
 }
 
 type fakeClient struct {
-	get    func(ctx context.Context, key client.ObjectKey, obj runtime.Object) error
-	list   func(ctx context.Context, opts *client.ListOptions, list runtime.Object) error
-	create func(ctx context.Context, obj runtime.Object) error
-	delete func(ctx context.Context, obj runtime.Object, opts ...client.DeleteOptionFunc) error
-	update func(ctx context.Context, obj runtime.Object) error
-	status func() client.StatusWriter
+	get         func(ctx context.Context, key client.ObjectKey, obj runtime.Object) error
+	list        func(ctx context.Context, list runtime.Object, opts ...client.ListOption) error
+	create      func(ctx context.Context, obj runtime.Object, opts ...client.CreateOption) error
+	delete      func(ctx context.Context, obj runtime.Object, opts ...client.DeleteOption) error
+	update      func(ctx context.Context, obj runtime.Object, opts ...client.UpdateOption) error
+	patch       func(ctx context.Context, obj runtime.Object, patch client.Patch, opts ...client.PatchOption) error
+	deleteAllOf func(ctx context.Context, obj runtime.Object, opts ...client.DeleteAllOfOption) error
+	status      func() client.StatusWriter
 }
 
 func (f *fakeClient) Get(ctx context.Context, key client.ObjectKey, obj runtime.Object) error {
 	return f.get(ctx, key, obj)
 }
 
-func (f *fakeClient) List(ctx context.Context, opts *client.ListOptions, list runtime.Object) error {
-	return f.list(ctx, opts, list)
+func (f *fakeClient) List(ctx context.Context, list runtime.Object, opts ...client.ListOption) error {
+	return f.list(ctx, list, opts...)
 }
 
-func (f *fakeClient) Create(ctx context.Context, obj runtime.Object) error {
-	return f.create(ctx, obj)
+func (f *fakeClient) Create(ctx context.Context, obj runtime.Object, opts ...client.CreateOption) error {
+	return f.create(ctx, obj, opts...)
 }
 
-func (f *fakeClient) Delete(ctx context.Context, obj runtime.Object, opts ...client.DeleteOptionFunc) error {
+func (f *fakeClient) Delete(ctx context.Context, obj runtime.Object, opts ...client.DeleteOption) error {
 	return f.delete(ctx, obj, opts...)
 }
 
-func (f *fakeClient) Update(ctx context.Context, obj runtime.Object) error {
-	return f.update(ctx, obj)
+func (f *fakeClient) Update(ctx context.Context, obj runtime.Object, opts ...client.UpdateOption) error {
+	return f.update(ctx, obj, opts...)
+}
+
+func (f *fakeClient) Patch(ctx context.Context, obj runtime.Object, patch client.Patch, opts ...client.PatchOption) error {
+	return f.patch(ctx, obj, patch, opts...)
+}
+
+func (f *fakeClient) DeleteAllOf(ctx context.Context, obj runtime.Object, opts ...client.DeleteAllOfOption) error {
+	return f.deleteAllOf(ctx, obj, opts...)
 }
 
 func (f *fakeClient) Status() client.StatusWriter {
@@ -179,7 +178,7 @@ func TestReconcile(t *testing.T) {
 			nil,
 			fake.NewFakeClientWithScheme(func() *runtime.Scheme {
 				s := runtime.NewScheme()
-				s.AddKnownTypes(custompodautoscalerv1alpha1.SchemeGroupVersion, &custompodautoscalerv1alpha1.CustomPodAutoscaler{
+				s.AddKnownTypes(custompodautoscalercomv1.GroupVersion, &custompodautoscalercomv1.CustomPodAutoscaler{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test",
 						Namespace: "test-namespace",
@@ -220,7 +219,7 @@ func TestReconcile(t *testing.T) {
 			errors.New("Error reconciling service account"),
 			fake.NewFakeClientWithScheme(func() *runtime.Scheme {
 				s := runtime.NewScheme()
-				s.AddKnownTypes(custompodautoscalerv1alpha1.SchemeGroupVersion, &custompodautoscalerv1alpha1.CustomPodAutoscaler{
+				s.AddKnownTypes(custompodautoscalercomv1.GroupVersion, &custompodautoscalercomv1.CustomPodAutoscaler{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test",
 						Namespace: "test-namespace",
@@ -228,7 +227,7 @@ func TestReconcile(t *testing.T) {
 				})
 				return s
 			}(),
-				&custompodautoscalerv1alpha1.CustomPodAutoscaler{
+				&custompodautoscalercomv1.CustomPodAutoscaler{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test",
 						Namespace: "test-namespace",
@@ -245,7 +244,7 @@ func TestReconcile(t *testing.T) {
 				reconciler := &fakek8sReconciler{}
 				reconciler.reconcile = func(
 					reqLogger logr.Logger,
-					instance *custompodautoscalerv1alpha1.CustomPodAutoscaler,
+					instance *custompodautoscalercomv1.CustomPodAutoscaler,
 					obj metav1.Object,
 					shouldProvision bool,
 					updatable bool,
@@ -265,7 +264,7 @@ func TestReconcile(t *testing.T) {
 			errors.New("Error reconciling role"),
 			fake.NewFakeClientWithScheme(func() *runtime.Scheme {
 				s := runtime.NewScheme()
-				s.AddKnownTypes(custompodautoscalerv1alpha1.SchemeGroupVersion, &custompodautoscalerv1alpha1.CustomPodAutoscaler{
+				s.AddKnownTypes(custompodautoscalercomv1.GroupVersion, &custompodautoscalercomv1.CustomPodAutoscaler{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test",
 						Namespace: "test-namespace",
@@ -273,7 +272,7 @@ func TestReconcile(t *testing.T) {
 				})
 				return s
 			}(),
-				&custompodautoscalerv1alpha1.CustomPodAutoscaler{
+				&custompodautoscalercomv1.CustomPodAutoscaler{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test",
 						Namespace: "test-namespace",
@@ -290,7 +289,7 @@ func TestReconcile(t *testing.T) {
 				reconciler := &fakek8sReconciler{}
 				reconciler.reconcile = func(
 					reqLogger logr.Logger,
-					instance *custompodautoscalerv1alpha1.CustomPodAutoscaler,
+					instance *custompodautoscalercomv1.CustomPodAutoscaler,
 					obj metav1.Object,
 					shouldProvision bool,
 					updatable bool,
@@ -310,7 +309,7 @@ func TestReconcile(t *testing.T) {
 			errors.New("Error reconciling rolebinding"),
 			fake.NewFakeClientWithScheme(func() *runtime.Scheme {
 				s := runtime.NewScheme()
-				s.AddKnownTypes(custompodautoscalerv1alpha1.SchemeGroupVersion, &custompodautoscalerv1alpha1.CustomPodAutoscaler{
+				s.AddKnownTypes(custompodautoscalercomv1.GroupVersion, &custompodautoscalercomv1.CustomPodAutoscaler{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test",
 						Namespace: "test-namespace",
@@ -318,7 +317,7 @@ func TestReconcile(t *testing.T) {
 				})
 				return s
 			}(),
-				&custompodautoscalerv1alpha1.CustomPodAutoscaler{
+				&custompodautoscalercomv1.CustomPodAutoscaler{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test",
 						Namespace: "test-namespace",
@@ -335,7 +334,7 @@ func TestReconcile(t *testing.T) {
 				reconciler := &fakek8sReconciler{}
 				reconciler.reconcile = func(
 					reqLogger logr.Logger,
-					instance *custompodautoscalerv1alpha1.CustomPodAutoscaler,
+					instance *custompodautoscalercomv1.CustomPodAutoscaler,
 					obj metav1.Object,
 					shouldProvision bool,
 					updatable bool,
@@ -355,11 +354,11 @@ func TestReconcile(t *testing.T) {
 			errors.New("Error reconciling pod"),
 			fake.NewFakeClientWithScheme(func() *runtime.Scheme {
 				s := runtime.NewScheme()
-				s.AddKnownTypes(custompodautoscalerv1alpha1.SchemeGroupVersion, &custompodautoscalerv1alpha1.CustomPodAutoscaler{})
+				s.AddKnownTypes(custompodautoscalercomv1.GroupVersion, &custompodautoscalercomv1.CustomPodAutoscaler{})
 				return s
 			}(),
-				&custompodautoscalerv1alpha1.CustomPodAutoscaler{
-					Spec: custompodautoscalerv1alpha1.CustomPodAutoscalerSpec{
+				&custompodautoscalercomv1.CustomPodAutoscaler{
+					Spec: custompodautoscalercomv1.CustomPodAutoscalerSpec{
 						Template: corev1.PodTemplateSpec{},
 					},
 					ObjectMeta: metav1.ObjectMeta{
@@ -378,7 +377,7 @@ func TestReconcile(t *testing.T) {
 				reconciler := &fakek8sReconciler{}
 				reconciler.reconcile = func(
 					reqLogger logr.Logger,
-					instance *custompodautoscalerv1alpha1.CustomPodAutoscaler,
+					instance *custompodautoscalercomv1.CustomPodAutoscaler,
 					obj metav1.Object,
 					shouldProvision bool,
 					updatable bool,
@@ -398,7 +397,7 @@ func TestReconcile(t *testing.T) {
 			nil,
 			fake.NewFakeClientWithScheme(func() *runtime.Scheme {
 				s := runtime.NewScheme()
-				s.AddKnownTypes(custompodautoscalerv1alpha1.SchemeGroupVersion, &custompodautoscalerv1alpha1.CustomPodAutoscaler{
+				s.AddKnownTypes(custompodautoscalercomv1.GroupVersion, &custompodautoscalercomv1.CustomPodAutoscaler{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test",
 						Namespace: "test-namespace",
@@ -406,8 +405,8 @@ func TestReconcile(t *testing.T) {
 				})
 				return s
 			}(),
-				&custompodautoscalerv1alpha1.CustomPodAutoscaler{
-					Spec: custompodautoscalerv1alpha1.CustomPodAutoscalerSpec{
+				&custompodautoscalercomv1.CustomPodAutoscaler{
+					Spec: custompodautoscalercomv1.CustomPodAutoscalerSpec{
 						Template: corev1.PodTemplateSpec{
 							Spec: corev1.PodSpec{
 								Containers: []corev1.Container{
@@ -434,7 +433,7 @@ func TestReconcile(t *testing.T) {
 				reconciler := &fakek8sReconciler{}
 				reconciler.reconcile = func(
 					reqLogger logr.Logger,
-					instance *custompodautoscalerv1alpha1.CustomPodAutoscaler,
+					instance *custompodautoscalercomv1.CustomPodAutoscaler,
 					obj metav1.Object,
 					shouldProvision bool,
 					updatable bool,
@@ -471,7 +470,7 @@ func TestReconcile(t *testing.T) {
 			nil,
 			fake.NewFakeClientWithScheme(func() *runtime.Scheme {
 				s := runtime.NewScheme()
-				s.AddKnownTypes(custompodautoscalerv1alpha1.SchemeGroupVersion, &custompodautoscalerv1alpha1.CustomPodAutoscaler{
+				s.AddKnownTypes(custompodautoscalercomv1.GroupVersion, &custompodautoscalercomv1.CustomPodAutoscaler{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test",
 						Namespace: "test-namespace",
@@ -479,12 +478,12 @@ func TestReconcile(t *testing.T) {
 				})
 				return s
 			}(),
-				&custompodautoscalerv1alpha1.CustomPodAutoscaler{
+				&custompodautoscalercomv1.CustomPodAutoscaler{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test",
 						Namespace: "test-namespace",
 					},
-					Spec: custompodautoscalerv1alpha1.CustomPodAutoscalerSpec{
+					Spec: custompodautoscalercomv1.CustomPodAutoscalerSpec{
 						Template: corev1.PodTemplateSpec{
 							Spec: corev1.PodSpec{
 								Containers: []corev1.Container{
@@ -494,16 +493,16 @@ func TestReconcile(t *testing.T) {
 								},
 							},
 						},
-						Config: []custompodautoscalerv1alpha1.CustomPodAutoscalerConfig{
-							custompodautoscalerv1alpha1.CustomPodAutoscalerConfig{
+						Config: []custompodautoscalercomv1.CustomPodAutoscalerConfig{
+							custompodautoscalercomv1.CustomPodAutoscalerConfig{
 								Name:  "first env var",
 								Value: "first env var value",
 							},
-							custompodautoscalerv1alpha1.CustomPodAutoscalerConfig{
+							custompodautoscalercomv1.CustomPodAutoscalerConfig{
 								Name:  "second env var",
 								Value: "second env var value",
 							},
-							custompodautoscalerv1alpha1.CustomPodAutoscalerConfig{
+							custompodautoscalercomv1.CustomPodAutoscalerConfig{
 								Name:  "third env var",
 								Value: "third env var value",
 							},
@@ -521,7 +520,7 @@ func TestReconcile(t *testing.T) {
 				reconciler := &fakek8sReconciler{}
 				reconciler.reconcile = func(
 					reqLogger logr.Logger,
-					instance *custompodautoscalerv1alpha1.CustomPodAutoscaler,
+					instance *custompodautoscalercomv1.CustomPodAutoscaler,
 					obj metav1.Object,
 					shouldProvision bool,
 					updatable bool,
@@ -569,7 +568,7 @@ func TestReconcile(t *testing.T) {
 			nil,
 			fake.NewFakeClientWithScheme(func() *runtime.Scheme {
 				s := runtime.NewScheme()
-				s.AddKnownTypes(custompodautoscalerv1alpha1.SchemeGroupVersion, &custompodautoscalerv1alpha1.CustomPodAutoscaler{
+				s.AddKnownTypes(custompodautoscalercomv1.GroupVersion, &custompodautoscalercomv1.CustomPodAutoscaler{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test",
 						Namespace: "test-namespace",
@@ -577,12 +576,12 @@ func TestReconcile(t *testing.T) {
 				})
 				return s
 			}(),
-				&custompodautoscalerv1alpha1.CustomPodAutoscaler{
+				&custompodautoscalercomv1.CustomPodAutoscaler{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test",
 						Namespace: "test-namespace",
 					},
-					Spec: custompodautoscalerv1alpha1.CustomPodAutoscalerSpec{
+					Spec: custompodautoscalercomv1.CustomPodAutoscalerSpec{
 						Template: corev1.PodTemplateSpec{
 							Spec: corev1.PodSpec{
 								Containers: []corev1.Container{
@@ -610,7 +609,7 @@ func TestReconcile(t *testing.T) {
 				reconciler := &fakek8sReconciler{}
 				reconciler.reconcile = func(
 					reqLogger logr.Logger,
-					instance *custompodautoscalerv1alpha1.CustomPodAutoscaler,
+					instance *custompodautoscalercomv1.CustomPodAutoscaler,
 					obj metav1.Object,
 					shouldProvision bool,
 					updatable bool,
@@ -646,7 +645,7 @@ func TestReconcile(t *testing.T) {
 			nil,
 			fake.NewFakeClientWithScheme(func() *runtime.Scheme {
 				s := runtime.NewScheme()
-				s.AddKnownTypes(custompodautoscalerv1alpha1.SchemeGroupVersion, &custompodautoscalerv1alpha1.CustomPodAutoscaler{
+				s.AddKnownTypes(custompodautoscalercomv1.GroupVersion, &custompodautoscalercomv1.CustomPodAutoscaler{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test",
 						Namespace: "test-namespace",
@@ -654,12 +653,12 @@ func TestReconcile(t *testing.T) {
 				})
 				return s
 			}(),
-				&custompodautoscalerv1alpha1.CustomPodAutoscaler{
+				&custompodautoscalercomv1.CustomPodAutoscaler{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test",
 						Namespace: "test-namespace",
 					},
-					Spec: custompodautoscalerv1alpha1.CustomPodAutoscalerSpec{
+					Spec: custompodautoscalercomv1.CustomPodAutoscalerSpec{
 						Template: corev1.PodTemplateSpec{
 							Spec: corev1.PodSpec{
 								Containers: []corev1.Container{
@@ -688,7 +687,7 @@ func TestReconcile(t *testing.T) {
 				reconciler := &fakek8sReconciler{}
 				reconciler.reconcile = func(
 					reqLogger logr.Logger,
-					instance *custompodautoscalerv1alpha1.CustomPodAutoscaler,
+					instance *custompodautoscalercomv1.CustomPodAutoscaler,
 					obj metav1.Object,
 					shouldProvision bool,
 					updatable bool,
@@ -725,7 +724,7 @@ func TestReconcile(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.description, func(t *testing.T) {
-			reconciler := &custompodautoscaler.ReconcileCustomPodAutoscaler{
+			reconciler := &controllers.CustomPodAutoscalerReconciler{
 				Client:                       test.client,
 				Scheme:                       runtime.NewScheme(),
 				KubernetesResourceReconciler: test.k8sreconciler,
@@ -739,297 +738,6 @@ func TestReconcile(t *testing.T) {
 
 			if !cmp.Equal(result, test.expected) {
 				t.Errorf("Result mismatch (-want +got):\n%s", cmp.Diff(result, test.expected))
-			}
-		})
-	}
-}
-
-type fakeManager struct {
-	add                 func(manager.Runnable) error
-	setFields           func(interface{}) error
-	start               func(<-chan struct{}) error
-	getConfig           func() *rest.Config
-	getScheme           func() *runtime.Scheme
-	getAdmissionDecoder func() admissiontypes.Decoder
-	getClient           func() client.Client
-	getFieldIndexer     func() client.FieldIndexer
-	getCache            func() cache.Cache
-	getRecorder         func(name string) record.EventRecorder
-	getRestMapper       func() meta.RESTMapper
-}
-
-// Add sets dependencies on i, and adds it to the list of runnables to start.
-func (f *fakeManager) Add(r manager.Runnable) error {
-	return f.add(r)
-}
-
-func (f *fakeManager) SetFields(i interface{}) error {
-	return f.setFields(i)
-}
-
-func (f *fakeManager) Start(stop <-chan struct{}) error {
-	return f.start(stop)
-}
-
-func (f *fakeManager) GetConfig() *rest.Config {
-	return f.getConfig()
-}
-
-func (f *fakeManager) GetClient() client.Client {
-	return f.getClient()
-}
-
-func (f *fakeManager) GetScheme() *runtime.Scheme {
-	return f.getScheme()
-}
-
-func (f *fakeManager) GetAdmissionDecoder() admissiontypes.Decoder {
-	return f.getAdmissionDecoder()
-}
-
-func (f *fakeManager) GetFieldIndexer() client.FieldIndexer {
-	return f.getFieldIndexer()
-}
-
-func (f *fakeManager) GetCache() cache.Cache {
-	return f.getCache()
-}
-
-func (f *fakeManager) GetRecorder(name string) record.EventRecorder {
-	return f.getRecorder(name)
-}
-
-func (f *fakeManager) GetRESTMapper() meta.RESTMapper {
-	return f.getRestMapper()
-}
-
-type fakeController struct {
-	reconcile func(r reconcile.Request) (reconcile.Result, error)
-
-	watch func(src source.Source, eventhandler handler.EventHandler, predicates ...predicate.Predicate) error
-
-	// Start starts the controller.  Start blocks until stop is closed or a controller has an error starting.
-	start func(stop <-chan struct{}) error
-}
-
-func (f *fakeController) Reconcile(r reconcile.Request) (reconcile.Result, error) {
-	return f.reconcile(r)
-}
-
-func (f *fakeController) Watch(src source.Source, eventhandler handler.EventHandler, predicates ...predicate.Predicate) error {
-	return f.watch(src, eventhandler, predicates...)
-}
-
-func (f *fakeController) Start(stop <-chan struct{}) error {
-	return f.start(stop)
-}
-
-func TestAdd(t *testing.T) {
-	equateErrorMessage := cmp.Comparer(func(x, y error) bool {
-		if x == nil || y == nil {
-			return x == nil && y == nil
-		}
-		return x.Error() == y.Error()
-	})
-
-	var tests = []struct {
-		description string
-		expected    error
-		mgr         manager.Manager
-		linker      custompodautoscaler.ControllerLinker
-	}{
-		{
-			"Fail to create new controller",
-			errors.New("Fail to create new linker"),
-			func() *fakeManager {
-				f := &fakeManager{}
-				f.getClient = func() client.Client {
-					return fake.NewFakeClient()
-				}
-
-				f.getScheme = func() *runtime.Scheme {
-					return runtime.NewScheme()
-				}
-				return f
-			}(),
-			func(name string, mgr manager.Manager, options controller.Options) (controller.Controller, error) {
-				return nil, errors.New("Fail to create new linker")
-			},
-		},
-		{
-			"Fail to watch for Custom Pod Autoscaler changes",
-			errors.New("Fail to watch CPA"),
-			func() *fakeManager {
-				f := &fakeManager{}
-				f.getClient = func() client.Client {
-					return fake.NewFakeClient()
-				}
-
-				f.getScheme = func() *runtime.Scheme {
-					return runtime.NewScheme()
-				}
-				return f
-			}(),
-			func(name string, mgr manager.Manager, options controller.Options) (controller.Controller, error) {
-				fController := &fakeController{}
-				fController.watch = func(src source.Source, eventhandler handler.EventHandler, predicates ...predicate.Predicate) error {
-					kind, ok := src.(*source.Kind)
-					if ok {
-						_, ok := kind.Type.(*custompodautoscalerv1alpha1.CustomPodAutoscaler)
-						if ok {
-							return errors.New("Fail to watch CPA")
-						}
-					}
-					return nil
-				}
-				return fController, nil
-			},
-		},
-		{
-			"Fail to watch for Pod changes",
-			errors.New("Fail to watch pod"),
-			func() *fakeManager {
-				f := &fakeManager{}
-				f.getClient = func() client.Client {
-					return fake.NewFakeClient()
-				}
-
-				f.getScheme = func() *runtime.Scheme {
-					return runtime.NewScheme()
-				}
-				return f
-			}(),
-			func(name string, mgr manager.Manager, options controller.Options) (controller.Controller, error) {
-				fController := &fakeController{}
-				fController.watch = func(src source.Source, eventhandler handler.EventHandler, predicates ...predicate.Predicate) error {
-					kind, ok := src.(*source.Kind)
-					if ok {
-						_, ok := kind.Type.(*corev1.Pod)
-						if ok {
-							return errors.New("Fail to watch pod")
-						}
-					}
-					return nil
-				}
-				return fController, nil
-			},
-		},
-		{
-			"Fail to watch for Service Account changes",
-			errors.New("Fail to watch service account"),
-			func() *fakeManager {
-				f := &fakeManager{}
-				f.getClient = func() client.Client {
-					return fake.NewFakeClient()
-				}
-
-				f.getScheme = func() *runtime.Scheme {
-					return runtime.NewScheme()
-				}
-				return f
-			}(),
-			func(name string, mgr manager.Manager, options controller.Options) (controller.Controller, error) {
-				fController := &fakeController{}
-				fController.watch = func(src source.Source, eventhandler handler.EventHandler, predicates ...predicate.Predicate) error {
-					kind, ok := src.(*source.Kind)
-					if ok {
-						_, ok := kind.Type.(*corev1.ServiceAccount)
-						if ok {
-							return errors.New("Fail to watch service account")
-						}
-					}
-					return nil
-				}
-				return fController, nil
-			},
-		},
-		{
-			"Fail to watch for Role changes",
-			errors.New("Fail to watch role"),
-			func() *fakeManager {
-				f := &fakeManager{}
-				f.getClient = func() client.Client {
-					return fake.NewFakeClient()
-				}
-
-				f.getScheme = func() *runtime.Scheme {
-					return runtime.NewScheme()
-				}
-				return f
-			}(),
-			func(name string, mgr manager.Manager, options controller.Options) (controller.Controller, error) {
-				fController := &fakeController{}
-				fController.watch = func(src source.Source, eventhandler handler.EventHandler, predicates ...predicate.Predicate) error {
-					kind, ok := src.(*source.Kind)
-					if ok {
-						_, ok := kind.Type.(*rbacv1.Role)
-						if ok {
-							return errors.New("Fail to watch role")
-						}
-					}
-					return nil
-				}
-				return fController, nil
-			},
-		},
-		{
-			"Fail to watch for Role Binding changes",
-			errors.New("Fail to watch role binding"),
-			func() *fakeManager {
-				f := &fakeManager{}
-				f.getClient = func() client.Client {
-					return fake.NewFakeClient()
-				}
-
-				f.getScheme = func() *runtime.Scheme {
-					return runtime.NewScheme()
-				}
-				return f
-			}(),
-			func(name string, mgr manager.Manager, options controller.Options) (controller.Controller, error) {
-				fController := &fakeController{}
-				fController.watch = func(src source.Source, eventhandler handler.EventHandler, predicates ...predicate.Predicate) error {
-					kind, ok := src.(*source.Kind)
-					if ok {
-						_, ok := kind.Type.(*rbacv1.RoleBinding)
-						if ok {
-							return errors.New("Fail to watch role binding")
-						}
-					}
-					return nil
-				}
-				return fController, nil
-			},
-		},
-		{
-			"Successfully add",
-			nil,
-			func() *fakeManager {
-				f := &fakeManager{}
-				f.getClient = func() client.Client {
-					return fake.NewFakeClient()
-				}
-
-				f.getScheme = func() *runtime.Scheme {
-					return runtime.NewScheme()
-				}
-				return f
-			}(),
-			func(name string, mgr manager.Manager, options controller.Options) (controller.Controller, error) {
-				fController := &fakeController{}
-				fController.watch = func(src source.Source, eventhandler handler.EventHandler, predicates ...predicate.Predicate) error {
-					return nil
-				}
-				return fController, nil
-			},
-		},
-	}
-	for _, test := range tests {
-		t.Run(test.description, func(t *testing.T) {
-			err := custompodautoscaler.Add(test.mgr, test.linker)
-			if !cmp.Equal(err, test.expected, equateErrorMessage) {
-				t.Errorf("Error mismatch (-want +got):\n%s", cmp.Diff(test.expected, err, equateErrorMessage))
-				return
 			}
 		})
 	}

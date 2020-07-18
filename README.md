@@ -36,8 +36,8 @@ Developing this project requires these dependencies:
 
 * Go >= 1.13
 * Golint
-* [operator-sdk](https://github.com/operator-framework/operator-sdk) - 
-[install guide](https://github.com/operator-framework/operator-sdk/blob/master/doc/user/install-operator-sdk.md)
+* [operator-sdk `v0.19.0`](https://github.com/operator-framework/operator-sdk) - 
+[install guide](https://sdk.operatorframework.io/docs/install-operator-sdk/)
 
 ### Commands
 

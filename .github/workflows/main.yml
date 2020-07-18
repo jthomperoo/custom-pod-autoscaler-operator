@@ -18,7 +18,7 @@ jobs:
     - name: Get build dependencies
       run: |
         # operator-sdk
-        RELEASE_VERSION=v0.12.0
+        RELEASE_VERSION=v0.19.0
         curl -LO https://github.com/operator-framework/operator-sdk/releases/download/${RELEASE_VERSION}/operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu
         chmod +x operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu
         sudo cp operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu /bin/operator-sdk 
@@ -42,7 +42,7 @@ jobs:
         # Check diff for changes in committed code and generated code
         git diff --exit-code
         
-        make unittest
+        make test
 
         if [ ${{ github.event_name }} == "release" ]; then
           # github.ref is in the form refs/tags/VERSION, so apply regex to just get version
@@ -86,8 +86,8 @@ jobs:
         mkdir dist dist/cluster dist/namespace
 
         # Copy cluster/namespace scope config
-        cp -r deploy/cluster/* deploy/crds/* dist/cluster
-        cp -r deploy/namespace/* deploy/crds/* dist/namespace
+        cp -r deploy/cluster/* deploy/crd/* dist/cluster
+        cp -r deploy/namespace/* deploy/crd/* dist/namespace
 
         # Variables to sub into k8s templates
         if [ ${{ github.event_name }} == "release" ]; then

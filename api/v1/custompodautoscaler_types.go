@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Custom Pod Autoscaler Authors.
+Copyright 2020 The Custom Pod Autoscaler Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,9 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1alpha1
+package v1
 
-// Important: Run "make generate" to regenerate code after modifying this file
+// Important: Run "make" and "make manifests" to regenerate code after modifying this file
 
 import (
 	autoscaling "k8s.io/api/autoscaling/v1"
@@ -25,14 +25,12 @@ import (
 )
 
 // CustomPodAutoscalerConfig defines the configuration options that can be passed to the CustomPodAutoscaler
-// +k8s:openapi-gen=true
 type CustomPodAutoscalerConfig struct {
 	Name  string `json:"name"`
 	Value string `json:"value"`
 }
 
 // CustomPodAutoscalerSpec defines the desired state of CustomPodAutoscaler
-// +k8s:openapi-gen=true
 type CustomPodAutoscalerSpec struct {
 	// The image of the Custom Pod Autoscaler
 	Template corev1.PodTemplateSpec `json:"template"`
@@ -47,17 +45,13 @@ type CustomPodAutoscalerSpec struct {
 }
 
 // CustomPodAutoscalerStatus defines the observed state of CustomPodAutoscaler
-// +k8s:openapi-gen=true
-type CustomPodAutoscalerStatus struct {
-}
+type CustomPodAutoscalerStatus struct{}
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-
-// CustomPodAutoscaler is the Schema for the custompodautoscalers API
-// +k8s:openapi-gen=true
+// +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:shortName=cpa
 // +groupName=custompodautoscaler.com
+// CustomPodAutoscaler is the Schema for the custompodautoscalers API
 type CustomPodAutoscaler struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -66,7 +60,7 @@ type CustomPodAutoscaler struct {
 	Status CustomPodAutoscalerStatus `json:"status,omitempty"`
 }
 
-// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +kubebuilder:object:root=true
 
 // CustomPodAutoscalerList contains a list of CustomPodAutoscaler
 type CustomPodAutoscalerList struct {
