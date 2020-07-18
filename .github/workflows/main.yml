@@ -104,7 +104,7 @@ jobs:
         fi
         export VERSION=${VERSION}
 
-        sed -i "/version: 0.0.0/c\version: ${VERSION}" Chart.yaml
+        sed -i "/version: 0.0.0/c\version: ${VERSION}" helm/Chart.yaml
         helm package helm/
         helm template helm/ --set mode=cluster > cluster.yaml
         helm template helm/ --set mode=namespaced > namespaced.yaml
