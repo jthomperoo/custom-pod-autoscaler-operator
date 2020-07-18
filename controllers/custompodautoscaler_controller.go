@@ -46,7 +46,7 @@ type k8sReconciler interface {
 	) (reconcile.Result, error)
 }
 
-// CustomPodAutoscalerReconciler reconciles a CustomPodAutoscaler object
+// CustomPodAutoscalerReconciler reconciles a CustomPodAutoscaler object.
 type CustomPodAutoscalerReconciler struct {
 	client.Client
 	Log                          logr.Logger
@@ -54,6 +54,7 @@ type CustomPodAutoscalerReconciler struct {
 	KubernetesResourceReconciler k8sReconciler
 }
 
+// PrimaryPred is the predicate that filters events for the CustomPodAutoscaler primary resource.
 var PrimaryPred = predicate.Funcs{
 	UpdateFunc: func(e event.UpdateEvent) bool {
 		return true
@@ -69,6 +70,8 @@ var PrimaryPred = predicate.Funcs{
 	},
 }
 
+// SecondaryPred is the predicate that filters events for the CustomPodAutoscaler's secondary 
+// resources (deployment/service/role/rolebinding).
 var SecondaryPred = predicate.Funcs{
 	UpdateFunc: func(e event.UpdateEvent) bool {
 		return false

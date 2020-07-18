@@ -16,7 +16,7 @@ limitations under the License.
 
 package v1
 
-// Important: Run "make" and "make manifests" to regenerate code after modifying this file
+// Important: Run "make generate" to regenerate code after modifying this file
 
 import (
 	autoscaling "k8s.io/api/autoscaling/v1"
@@ -47,11 +47,11 @@ type CustomPodAutoscalerSpec struct {
 // CustomPodAutoscalerStatus defines the observed state of CustomPodAutoscaler
 type CustomPodAutoscalerStatus struct{}
 
+// CustomPodAutoscaler is the Schema for the custompodautoscalers API
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:shortName=cpa
 // +groupName=custompodautoscaler.com
-// CustomPodAutoscaler is the Schema for the custompodautoscalers API
 type CustomPodAutoscaler struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -60,9 +60,8 @@ type CustomPodAutoscaler struct {
 	Status CustomPodAutoscalerStatus `json:"status,omitempty"`
 }
 
-// +kubebuilder:object:root=true
-
 // CustomPodAutoscalerList contains a list of CustomPodAutoscaler
+// +kubebuilder:object:root=true
 type CustomPodAutoscalerList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
