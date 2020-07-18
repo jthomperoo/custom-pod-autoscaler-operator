@@ -95,8 +95,6 @@ jobs:
     - name: Bundle YAML config
       if: github.event_name == 'release' && github.repository == 'jthomperoo/custom-pod-autoscaler-operator'
       run: |
-        mkdir dist dist/cluster dist/namespace
-
         # Variables to sub into k8s templates
         if [ ${{ github.event_name }} == "release" ]; then
           # github.ref is in the form refs/tags/VERSION, so apply regex to just get version
