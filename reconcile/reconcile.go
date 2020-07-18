@@ -19,7 +19,7 @@ package reconcile
 import (
 	"context"
 	"github.com/go-logr/logr"
-	custompodautoscalerv1alpha1 "github.com/jthomperoo/custom-pod-autoscaler-operator/pkg/apis/custompodautoscaler/v1alpha1"
+	custompodautoscalercomv1 "github.com/jthomperoo/custom-pod-autoscaler-operator/api/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -43,7 +43,7 @@ type KubernetesResourceReconciler struct {
 // doesn't it creates one
 func (k *KubernetesResourceReconciler) Reconcile(
 	reqLogger logr.Logger,
-	instance *custompodautoscalerv1alpha1.CustomPodAutoscaler,
+	instance *custompodautoscalercomv1.CustomPodAutoscaler,
 	obj metav1.Object,
 	shouldProvision bool,
 	updatable bool,

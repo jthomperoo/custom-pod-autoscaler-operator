@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Custom Pod Autoscaler Authors.
+Copyright 2020 The Custom Pod Autoscaler Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
-// +build unit
 
 package reconcile_test
 
@@ -26,8 +25,8 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	custompodautoscalerv1alpha1 "github.com/jthomperoo/custom-pod-autoscaler-operator/pkg/apis/custompodautoscaler/v1alpha1"
-	k8sreconcile "github.com/jthomperoo/custom-pod-autoscaler-operator/pkg/controller/reconcile"
+	custompodautoscalercomv1 "github.com/jthomperoo/custom-pod-autoscaler-operator/api/v1"
+	k8sreconcile "github.com/jthomperoo/custom-pod-autoscaler-operator/reconcile"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -43,10 +42,12 @@ var log = logf.Log.WithName("controller_custompodautoscaler")
 
 type fakeClient struct {
 	get    func(ctx context.Context, key client.ObjectKey, obj runtime.Object) error
-	list   func(ctx context.Context, opts *client.ListOptions, list runtime.Object) error
-	create func(ctx context.Context, obj runtime.Object) error
-	delete func(ctx context.Context, obj runtime.Object, opts ...client.DeleteOptionFunc) error
-	update func(ctx context.Context, obj runtime.Object) error
+	list   func(ctx context.Context, list runtime.Object, opts ...client.ListOption) error
+	create func(ctx context.Context, obj runtime.Object, opts ...client.CreateOption) error
+	delete func(ctx context.Context, obj runtime.Object, opts ...client.DeleteOption) error
+	update func(ctx context.Context, obj runtime.Object, opts ...client.UpdateOption) error
+	patch func(ctx context.Context, obj runtime.Object, patch client.Patch, opts ...client.PatchOption) error
+	deleteAllOf func(ctx context.Context, obj runtime.Object, opts ...client.DeleteAllOfOption) error
 	status func() client.StatusWriter
 }
 
@@ -54,20 +55,28 @@ func (f *fakeClient) Get(ctx context.Context, key client.ObjectKey, obj runtime.
 	return f.get(ctx, key, obj)
 }
 
-func (f *fakeClient) List(ctx context.Context, opts *client.ListOptions, list runtime.Object) error {
-	return f.list(ctx, opts, list)
+func (f *fakeClient) List(ctx context.Context, list runtime.Object, opts ...client.ListOption) error {
+	return f.list(ctx, list, opts...)
 }
 
-func (f *fakeClient) Create(ctx context.Context, obj runtime.Object) error {
-	return f.create(ctx, obj)
+func (f *fakeClient) Create(ctx context.Context, obj runtime.Object, opts ...client.CreateOption) error {
+	return f.create(ctx, obj, opts...)
 }
 
-func (f *fakeClient) Delete(ctx context.Context, obj runtime.Object, opts ...client.DeleteOptionFunc) error {
+func (f *fakeClient) Delete(ctx context.Context, obj runtime.Object, opts ...client.DeleteOption) error {
 	return f.delete(ctx, obj, opts...)
 }
 
-func (f *fakeClient) Update(ctx context.Context, obj runtime.Object) error {
-	return f.update(ctx, obj)
+func (f *fakeClient) Update(ctx context.Context, obj runtime.Object, opts ...client.UpdateOption) error {
+	return f.update(ctx, obj, opts...)
+}
+
+func (f *fakeClient) Patch(ctx context.Context, obj runtime.Object, patch client.Patch, opts ...client.PatchOption) error {
+	return f.patch(ctx, obj, patch, opts...)
+}
+
+func (f *fakeClient) DeleteAllOf(ctx context.Context, obj runtime.Object, opts ...client.DeleteAllOfOption) error {
+	return f.deleteAllOf(ctx, obj, opts...)
 }
 
 func (f *fakeClient) Status() client.StatusWriter {
@@ -88,7 +97,7 @@ func TestReconcile(t *testing.T) {
 		expectedErr     error
 		reconciler      *k8sreconcile.KubernetesResourceReconciler
 		logger          logr.Logger
-		instance        *custompodautoscalerv1alpha1.CustomPodAutoscaler
+		instance        *custompodautoscalercomv1.CustomPodAutoscaler
 		obj             metav1.Object
 		shouldProvision bool
 		updatable       bool
@@ -105,7 +114,7 @@ func TestReconcile(t *testing.T) {
 				},
 			},
 			log.WithValues("Request.Namespace", "test", "Request.Name", "test"),
-			&custompodautoscalerv1alpha1.CustomPodAutoscaler{},
+			&custompodautoscalercomv1.CustomPodAutoscaler{},
 			&corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test pod",
@@ -134,7 +143,7 @@ func TestReconcile(t *testing.T) {
 				},
 			},
 			log.WithValues("Request.Namespace", "test", "Request.Name", "test"),
-			&custompodautoscalerv1alpha1.CustomPodAutoscaler{},
+			&custompodautoscalercomv1.CustomPodAutoscaler{},
 			&corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test pod",
@@ -156,7 +165,7 @@ func TestReconcile(t *testing.T) {
 						return apierrors.NewNotFound(schema.GroupResource{}, key.Namespace)
 					}
 					// Creation fails
-					fclient.create = func(ctx context.Context, obj runtime.Object) error {
+					fclient.create = func(ctx context.Context, obj runtime.Object, opts ...client.CreateOption) error {
 						return errors.New("Fail to create object")
 					}
 					return fclient
@@ -167,7 +176,7 @@ func TestReconcile(t *testing.T) {
 				},
 			},
 			log.WithValues("Request.Namespace", "test", "Request.Name", "test"),
-			&custompodautoscalerv1alpha1.CustomPodAutoscaler{},
+			&custompodautoscalercomv1.CustomPodAutoscaler{},
 			&corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test pod",
@@ -196,7 +205,7 @@ func TestReconcile(t *testing.T) {
 				},
 			},
 			log.WithValues("Request.Namespace", "test", "Request.Name", "test"),
-			&custompodautoscalerv1alpha1.CustomPodAutoscaler{},
+			&custompodautoscalercomv1.CustomPodAutoscaler{},
 			&corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test pod",
@@ -218,7 +227,7 @@ func TestReconcile(t *testing.T) {
 						return apierrors.NewNotFound(schema.GroupResource{}, key.Namespace)
 					}
 					// Creation successful
-					fclient.create = func(ctx context.Context, obj runtime.Object) error {
+					fclient.create = func(ctx context.Context, obj runtime.Object, opts ...client.CreateOption) error {
 						return nil
 					}
 					return fclient
@@ -229,7 +238,7 @@ func TestReconcile(t *testing.T) {
 				},
 			},
 			log.WithValues("Request.Namespace", "test", "Request.Name", "test"),
-			&custompodautoscalerv1alpha1.CustomPodAutoscaler{},
+			&custompodautoscalercomv1.CustomPodAutoscaler{},
 			&corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test pod",
@@ -258,7 +267,7 @@ func TestReconcile(t *testing.T) {
 				},
 			},
 			log.WithValues("Request.Namespace", "test", "Request.Name", "test"),
-			&custompodautoscalerv1alpha1.CustomPodAutoscaler{},
+			&custompodautoscalercomv1.CustomPodAutoscaler{},
 			&corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test pod",
@@ -294,7 +303,7 @@ func TestReconcile(t *testing.T) {
 				},
 			},
 			log.WithValues("Request.Namespace", "test", "Request.Name", "test"),
-			&custompodautoscalerv1alpha1.CustomPodAutoscaler{},
+			&custompodautoscalercomv1.CustomPodAutoscaler{},
 			&corev1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test pod",
@@ -323,7 +332,7 @@ func TestReconcile(t *testing.T) {
 						return nil
 					}
 					// Fail to update
-					fclient.update = func(ctx context.Context, obj runtime.Object) error {
+					fclient.update = func(ctx context.Context, obj runtime.Object, opts ...client.UpdateOption) error {
 						return errors.New("Fail to update")
 					}
 					return fclient
@@ -334,7 +343,7 @@ func TestReconcile(t *testing.T) {
 				},
 			},
 			log.WithValues("Request.Namespace", "test", "Request.Name", "test"),
-			&custompodautoscalerv1alpha1.CustomPodAutoscaler{},
+			&custompodautoscalercomv1.CustomPodAutoscaler{},
 			&corev1.ServiceAccount{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test sa",
@@ -356,7 +365,7 @@ func TestReconcile(t *testing.T) {
 						return nil
 					}
 					// Fail to update
-					fclient.update = func(ctx context.Context, obj runtime.Object) error {
+					fclient.update = func(ctx context.Context, obj runtime.Object, opts ...client.UpdateOption) error {
 						return nil
 					}
 					return fclient
@@ -367,7 +376,7 @@ func TestReconcile(t *testing.T) {
 				},
 			},
 			log.WithValues("Request.Namespace", "test", "Request.Name", "test"),
-			&custompodautoscalerv1alpha1.CustomPodAutoscaler{},
+			&custompodautoscalercomv1.CustomPodAutoscaler{},
 			&corev1.ServiceAccount{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test sa",
@@ -389,7 +398,7 @@ func TestReconcile(t *testing.T) {
 						return nil
 					}
 					// Fail to delete
-					fclient.delete = func(ctx context.Context, obj runtime.Object, opts ...client.DeleteOptionFunc) error {
+					fclient.delete = func(ctx context.Context, obj runtime.Object, opts ...client.DeleteOption) error {
 						return errors.New("Fail to delete")
 					}
 					return fclient
@@ -400,7 +409,7 @@ func TestReconcile(t *testing.T) {
 				},
 			},
 			log.WithValues("Request.Namespace", "test", "Request.Name", "test"),
-			&custompodautoscalerv1alpha1.CustomPodAutoscaler{},
+			&custompodautoscalercomv1.CustomPodAutoscaler{},
 			&corev1.ServiceAccount{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test sa",
@@ -422,7 +431,7 @@ func TestReconcile(t *testing.T) {
 						return nil
 					}
 					// Fail to delete
-					fclient.delete = func(ctx context.Context, obj runtime.Object, opts ...client.DeleteOptionFunc) error {
+					fclient.delete = func(ctx context.Context, obj runtime.Object, opts ...client.DeleteOption) error {
 						return nil
 					}
 					return fclient
@@ -433,7 +442,7 @@ func TestReconcile(t *testing.T) {
 				},
 			},
 			log.WithValues("Request.Namespace", "test", "Request.Name", "test"),
-			&custompodautoscalerv1alpha1.CustomPodAutoscaler{},
+			&custompodautoscalercomv1.CustomPodAutoscaler{},
 			&corev1.ServiceAccount{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test sa",
@@ -455,7 +464,7 @@ func TestReconcile(t *testing.T) {
 						return nil
 					}
 					// Update fails
-					fclient.update = func(ctx context.Context, obj runtime.Object) error {
+					fclient.update = func(ctx context.Context, obj runtime.Object, opts ...client.UpdateOption) error {
 						return errors.New("Fail to update object")
 					}
 					return fclient
@@ -466,7 +475,7 @@ func TestReconcile(t *testing.T) {
 				},
 			},
 			log.WithValues("Request.Namespace", "test", "Request.Name", "test"),
-			&custompodautoscalerv1alpha1.CustomPodAutoscaler{
+			&custompodautoscalercomv1.CustomPodAutoscaler{
 				TypeMeta: v1.TypeMeta{
 					Kind:       "custompodautoscaler",
 					APIVersion: "apiextensions.k8s.io/v1beta1",
@@ -492,7 +501,10 @@ func TestReconcile(t *testing.T) {
 			&k8sreconcile.KubernetesResourceReconciler{
 				Client: fake.NewFakeClientWithScheme(func() *runtime.Scheme {
 					s := runtime.NewScheme()
-					s.AddKnownTypes(custompodautoscalerv1alpha1.SchemeGroupVersion, &corev1.Pod{
+					s.AddKnownTypes(schema.GroupVersion{
+						Group: "",
+						Version: "v1",
+					}, &corev1.Pod{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "test pod",
 							Namespace: "test namespace",
@@ -513,7 +525,7 @@ func TestReconcile(t *testing.T) {
 				},
 			},
 			log.WithValues("Request.Namespace", "test", "Request.Name", "test"),
-			&custompodautoscalerv1alpha1.CustomPodAutoscaler{
+			&custompodautoscalercomv1.CustomPodAutoscaler{
 				TypeMeta: v1.TypeMeta{
 					Kind:       "custompodautoscaler",
 					APIVersion: "apiextensions.k8s.io/v1beta1",
@@ -539,7 +551,10 @@ func TestReconcile(t *testing.T) {
 			&k8sreconcile.KubernetesResourceReconciler{
 				Client: fake.NewFakeClientWithScheme(func() *runtime.Scheme {
 					s := runtime.NewScheme()
-					s.AddKnownTypes(custompodautoscalerv1alpha1.SchemeGroupVersion, &corev1.Pod{
+					s.AddKnownTypes(schema.GroupVersion{
+						Group: "",
+						Version: "v1",
+					}, &corev1.Pod{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "test pod",
 							Namespace: "test namespace",
@@ -560,7 +575,7 @@ func TestReconcile(t *testing.T) {
 				},
 			},
 			log.WithValues("Request.Namespace", "test", "Request.Name", "test"),
-			&custompodautoscalerv1alpha1.CustomPodAutoscaler{
+			&custompodautoscalercomv1.CustomPodAutoscaler{
 				TypeMeta: v1.TypeMeta{
 					Kind:       "custompodautoscaler",
 					APIVersion: "apiextensions.k8s.io/v1beta1",

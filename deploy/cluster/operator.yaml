@@ -16,8 +16,6 @@ spec:
       containers:
         - name: custom-pod-autoscaler-operator
           image: custompodautoscaler/operator:${VERSION}
-          command:
-          - custom-pod-autoscaler-operator
           imagePullPolicy: IfNotPresent
           env:
             - name: WATCH_NAMESPACE
