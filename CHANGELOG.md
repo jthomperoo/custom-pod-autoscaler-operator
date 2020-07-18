@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - CustomPodAutoscaler resource changed from `v1alpha` to `v1`.
 - Operator Docker image now using `distroless` rather than RHEL `ubi7`.
+- Add deployment via helm.
 
 ## [v0.6.0] - 2020-06-24
 ### Added

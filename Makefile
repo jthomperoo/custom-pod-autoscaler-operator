@@ -28,7 +28,7 @@ docker: default
 generate:
 	@echo "=============Generating YAML============="
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) crd paths="./..." output:crd:artifacts:config=deploy/crd
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) crd paths="./..." output:crd:artifacts:config=helm/templates/crd
 
 # Run against the configured Kubernetes cluster in ~/.kube/config
 run:

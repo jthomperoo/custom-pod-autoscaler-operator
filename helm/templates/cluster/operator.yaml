@@ -1,21 +1,22 @@
+{{ if eq .Values.mode "cluster"}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: custom-pod-autoscaler-operator
+  name: {{ .Chart.Name }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      name: custom-pod-autoscaler-operator
+      name: {{ .Chart.Name }}
   template:
     metadata:
       labels:
-        name: custom-pod-autoscaler-operator
+        name: {{ .Chart.Name }}
     spec:
-      serviceAccountName: custom-pod-autoscaler-operator-cluster
+      serviceAccountName: {{ .Chart.Name }}-cluster
       containers:
-        - name: custom-pod-autoscaler-operator
-          image: custompodautoscaler/operator:${VERSION}
+        - name: {{ .Chart.Name }}
+          image: "custompodautoscaler/operator:{{ .Chart.Version }}"
           imagePullPolicy: IfNotPresent
           env:
             - name: WATCH_NAMESPACE
@@ -26,3 +27,4 @@ spec:
                   fieldPath: metadata.name
             - name: OPERATOR_NAME
               value: "custom-pod-autoscaler-operator"
+{{ end }}

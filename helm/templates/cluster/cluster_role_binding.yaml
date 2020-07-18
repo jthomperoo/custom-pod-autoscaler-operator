@@ -1,12 +1,14 @@
+{{ if eq .Values.mode "cluster"}}
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: custom-pod-autoscaler-operator
+  name: {{ .Chart.Name }}
 subjects:
 - kind: ServiceAccount
-  name: custom-pod-autoscaler-operator-cluster
+  name: {{ .Chart.Name }}-cluster
   namespace: "default"
 roleRef:
   kind: ClusterRole
-  name: custom-pod-autoscaler-operator
+  name: {{ .Chart.Name }}
   apiGroup: rbac.authorization.k8s.io
+{{ end }}

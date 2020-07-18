@@ -17,11 +17,19 @@ The Custom Pod Autoscaler Operator is part of the
 Run this to install the Operator and Custom Pod Autoscaler definition with cluster-wide scope on your cluster:
 ```
 VERSION=v0.6.0
-curl -L "https://github.com/jthomperoo/custom-pod-autoscaler-operator/releases/download/${VERSION}/cluster.tar.gz" | tar xvz --to-command 'kubectl apply -f -'
+kubectl apply -f https://github.com/jthomperoo/custom-pod-autoscaler-operator/releases/download/${VERSION}/cluster.yaml
 ```
+
+Or if you prefer using helm:
+```
+VERSION=v0.6.0
+HELM_CHART=custom-pod-autoscaler-operator
+helm install ${HELM_CHART} https://github.com/jthomperoo/custom-pod-autoscaler-operator/releases/download/${VERSION}/custom-pod-autoscaler-operator-${VERSION}.tgz
+```
+
 ### Advanced
 See the [install guide](INSTALL.md) to see more in depth installation options, 
-such as namespace specific installs.
+such as namespace specific installs and installation using helm.
 
 ## Usage
 See the [usage guide](USAGE.md) to see some simple usage options. For more indepth
