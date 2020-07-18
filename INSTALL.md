@@ -5,7 +5,7 @@
 ### Cluster scoped install
 Run this to install the Operator and Custom Pod Autoscaler definition with cluster-wide scope on your cluster:
 ```
-VERSION=v0.6.0
+VERSION=v0.7.0
 HELM_CHART=custom-pod-autoscaler-operator
 helm install ${HELM_CHART} https://github.com/jthomperoo/custom-pod-autoscaler-operator/releases/download/${VERSION}/custom-pod-autoscaler-operator-${VERSION}.tgz
 ```
@@ -14,7 +14,7 @@ helm install ${HELM_CHART} https://github.com/jthomperoo/custom-pod-autoscaler-o
 Run this to install the Operator and Custom Pod Autoscaler definition with namespaced scope on your cluster:
 ```
 NAMESPACE=<INSERT_NAMESPACE_HERE>
-VERSION=v0.6.0
+VERSION=v0.7.0
 HELM_CHART=custom-pod-autoscaler-operator
 helm install --set mode=namespaced --namespace=${NAMESPACE}  ${HELM_CHART} https://github.com/jthomperoo/custom-pod-autoscaler-operator/releases/download/${VERSION}/custom-pod-autoscaler-operator-${VERSION}.tgz
 ``````
@@ -24,7 +24,7 @@ helm install --set mode=namespaced --namespace=${NAMESPACE}  ${HELM_CHART} https
 ### Cluster scoped install
 Run this to install the Operator and Custom Pod Autoscaler definition with cluster-wide scope on your cluster:
 ```
-VERSION=v0.6.0
+VERSION=v0.7.0
 kubectl apply -f https://github.com/jthomperoo/custom-pod-autoscaler-operator/releases/download/${VERSION}/cluster.yaml
 ```
 
@@ -32,7 +32,7 @@ kubectl apply -f https://github.com/jthomperoo/custom-pod-autoscaler-operator/re
 Run this to install the Operator and Custom Pod Autoscaler definition with namespaced scope on your cluster:
 ```
 NAMESPACE=<INSERT_NAMESPACE_HERE>
-VERSION=v0.6.0
+VERSION=v0.7.0
 kubectl config set-context --current --namespace=${NAMESPACE}
 kubectl apply -f https://github.com/jthomperoo/custom-pod-autoscaler-operator/releases/download/${VERSION}/namespaced.yaml
 ``````
