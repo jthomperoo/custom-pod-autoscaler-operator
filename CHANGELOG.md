@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v1.0.0] - 2020-07-19
+
 ## [v0.7.0] - 2020-07-18
 ### Changed
 - CustomPodAutoscaler resource changed from `v1alpha` to `v1`.
@@ -68,7 +70,8 @@ are provided already by the user/another system. All provision options default t
 - Allow creation/deletion of CPA.
 
 [Unreleased]:
-https://github.com/jthomperoo/custom-pod-autoscaler-operator/compare/v0.7.0...HEAD
+https://github.com/jthomperoo/custom-pod-autoscaler-operator/compare/v1.0.0...HEAD
+[v1.0.0]: https://github.com/jthomperoo/custom-pod-autoscaler-operator/compare/v0.7.0...v1.0.0
 [v0.7.0]: https://github.com/jthomperoo/custom-pod-autoscaler-operator/compare/v0.6.0...v0.7.0
 [v0.6.0]: https://github.com/jthomperoo/custom-pod-autoscaler-operator/compare/v0.5.0...v0.6.0
 [v0.5.0]: https://github.com/jthomperoo/custom-pod-autoscaler-operator/compare/0.4.0...v0.5.0
