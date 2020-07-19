@@ -7,7 +7,7 @@ indepth examples check out the
 ## Simple Custom Pod Autoscaler
 
 ```yaml
-apiVersion: custompodautoscaler.com/v1alpha1
+apiVersion: custompodautoscaler.com/v1
 kind: CustomPodAutoscaler
 metadata:
   name: python-custom-autoscaler
@@ -49,7 +49,7 @@ metadata:
   annotations:
     myCustomAnnotation: test
 ---
-apiVersion: custompodautoscaler.com/v1alpha1
+apiVersion: custompodautoscaler.com/v1
 kind: CustomPodAutoscaler
 metadata:
   name: python-custom-autoscaler
