@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - When deploying using Cluster wide scope to a namespace, the
 `ClusterRoleBinding` no longer only searches in the `default` namespace for the
-`ServiceAccount` - instead itsearches in the namespace that the helm chart is
+`ServiceAccount` - instead it searches in the namespace that the helm chart is
 deployed to. This change is only for the helm deploys, as such the kubectl
 deployment method is no longer recommended, as it only supports deploying to
 the `default` namespace for cluster wide installs.
