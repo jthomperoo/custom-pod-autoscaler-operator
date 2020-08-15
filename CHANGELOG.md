@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [v1.0.1] - 2020-08-15
 ### Fixed
 - When deploying using Cluster wide scope to a namespace, the
 `ClusterRoleBinding` no longer only searches in the `default` namespace for the
@@ -77,7 +79,8 @@ are provided already by the user/another system. All provision options default t
 - Allow creation/deletion of CPA.
 
 [Unreleased]:
-https://github.com/jthomperoo/custom-pod-autoscaler-operator/compare/v1.0.0...HEAD
+https://github.com/jthomperoo/custom-pod-autoscaler-operator/compare/v1.0.1...HEAD
+[v1.0.1]: https://github.com/jthomperoo/custom-pod-autoscaler-operator/compare/v1.0.0...v1.0.1
 [v1.0.0]: https://github.com/jthomperoo/custom-pod-autoscaler-operator/compare/v0.7.0...v1.0.0
 [v0.7.0]: https://github.com/jthomperoo/custom-pod-autoscaler-operator/compare/v0.6.0...v0.7.0
 [v0.6.0]: https://github.com/jthomperoo/custom-pod-autoscaler-operator/compare/v0.5.0...v0.6.0
