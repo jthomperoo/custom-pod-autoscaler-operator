@@ -19,10 +19,11 @@ package reconcile_test
 import (
 	"context"
 	"errors"
-	"github.com/go-logr/logr"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"testing"
 	"time"
+
+	"github.com/go-logr/logr"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/google/go-cmp/cmp"
 	custompodautoscalercomv1 "github.com/jthomperoo/custom-pod-autoscaler-operator/api/v1"
@@ -41,14 +42,14 @@ import (
 var log = logf.Log.WithName("controller_custompodautoscaler")
 
 type fakeClient struct {
-	get    func(ctx context.Context, key client.ObjectKey, obj runtime.Object) error
-	list   func(ctx context.Context, list runtime.Object, opts ...client.ListOption) error
-	create func(ctx context.Context, obj runtime.Object, opts ...client.CreateOption) error
-	delete func(ctx context.Context, obj runtime.Object, opts ...client.DeleteOption) error
-	update func(ctx context.Context, obj runtime.Object, opts ...client.UpdateOption) error
-	patch func(ctx context.Context, obj runtime.Object, patch client.Patch, opts ...client.PatchOption) error
+	get         func(ctx context.Context, key client.ObjectKey, obj runtime.Object) error
+	list        func(ctx context.Context, list runtime.Object, opts ...client.ListOption) error
+	create      func(ctx context.Context, obj runtime.Object, opts ...client.CreateOption) error
+	delete      func(ctx context.Context, obj runtime.Object, opts ...client.DeleteOption) error
+	update      func(ctx context.Context, obj runtime.Object, opts ...client.UpdateOption) error
+	patch       func(ctx context.Context, obj runtime.Object, patch client.Patch, opts ...client.PatchOption) error
 	deleteAllOf func(ctx context.Context, obj runtime.Object, opts ...client.DeleteAllOfOption) error
-	status func() client.StatusWriter
+	status      func() client.StatusWriter
 }
 
 func (f *fakeClient) Get(ctx context.Context, key client.ObjectKey, obj runtime.Object) error {
@@ -255,43 +256,6 @@ func TestReconcile(t *testing.T) {
 			&k8sreconcile.KubernetesResourceReconciler{
 				Client: func() *fakeClient {
 					fclient := &fakeClient{}
-					// Client reports object not found
-					fclient.get = func(ctx context.Context, key client.ObjectKey, obj runtime.Object) error {
-						return nil
-					}
-					return fclient
-				}(),
-				Scheme: &runtime.Scheme{},
-				ControllerReferencer: func(owner, object v1.Object, scheme *runtime.Scheme) error {
-					return nil
-				},
-			},
-			log.WithValues("Request.Namespace", "test", "Request.Name", "test"),
-			&custompodautoscalercomv1.CustomPodAutoscaler{},
-			&corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test pod",
-					Namespace: "test namespace",
-					DeletionTimestamp: &v1.Time{
-						Time: time.Now(),
-					},
-				},
-				TypeMeta: metav1.TypeMeta{
-					Kind:       "Pod",
-					APIVersion: "v1",
-				},
-			},
-			true,
-			false,
-		},
-		{
-			"Object already exists; Pod being deleted, skip updating",
-			reconcile.Result{},
-			nil,
-			&k8sreconcile.KubernetesResourceReconciler{
-				Client: func() *fakeClient {
-					fclient := &fakeClient{}
-					// Client reports object not found
 					fclient.get = func(ctx context.Context, key client.ObjectKey, obj runtime.Object) error {
 						return nil
 					}
@@ -327,7 +291,6 @@ func TestReconcile(t *testing.T) {
 			&k8sreconcile.KubernetesResourceReconciler{
 				Client: func() *fakeClient {
 					fclient := &fakeClient{}
-					// Client reports object not found
 					fclient.get = func(ctx context.Context, key client.ObjectKey, obj runtime.Object) error {
 						return nil
 					}
@@ -360,7 +323,6 @@ func TestReconcile(t *testing.T) {
 			&k8sreconcile.KubernetesResourceReconciler{
 				Client: func() *fakeClient {
 					fclient := &fakeClient{}
-					// Client reports object not found
 					fclient.get = func(ctx context.Context, key client.ObjectKey, obj runtime.Object) error {
 						return nil
 					}
@@ -393,7 +355,6 @@ func TestReconcile(t *testing.T) {
 			&k8sreconcile.KubernetesResourceReconciler{
 				Client: func() *fakeClient {
 					fclient := &fakeClient{}
-					// Client reports object not found
 					fclient.get = func(ctx context.Context, key client.ObjectKey, obj runtime.Object) error {
 						return nil
 					}
@@ -426,7 +387,6 @@ func TestReconcile(t *testing.T) {
 			&k8sreconcile.KubernetesResourceReconciler{
 				Client: func() *fakeClient {
 					fclient := &fakeClient{}
-					// Client reports object not found
 					fclient.get = func(ctx context.Context, key client.ObjectKey, obj runtime.Object) error {
 						return nil
 					}
@@ -459,7 +419,6 @@ func TestReconcile(t *testing.T) {
 			&k8sreconcile.KubernetesResourceReconciler{
 				Client: func() *fakeClient {
 					fclient := &fakeClient{}
-					// Client reports object already exists
 					fclient.get = func(ctx context.Context, key client.ObjectKey, obj runtime.Object) error {
 						return nil
 					}
@@ -502,7 +461,7 @@ func TestReconcile(t *testing.T) {
 				Client: fake.NewFakeClientWithScheme(func() *runtime.Scheme {
 					s := runtime.NewScheme()
 					s.AddKnownTypes(schema.GroupVersion{
-						Group: "",
+						Group:   "",
 						Version: "v1",
 					}, &corev1.Pod{
 						ObjectMeta: metav1.ObjectMeta{
@@ -552,7 +511,7 @@ func TestReconcile(t *testing.T) {
 				Client: fake.NewFakeClientWithScheme(func() *runtime.Scheme {
 					s := runtime.NewScheme()
 					s.AddKnownTypes(schema.GroupVersion{
-						Group: "",
+						Group:   "",
 						Version: "v1",
 					}, &corev1.Pod{
 						ObjectMeta: metav1.ObjectMeta{
@@ -601,6 +560,81 @@ func TestReconcile(t *testing.T) {
 			},
 			false,
 			false,
+		},
+		{
+			"Service account already exists, retain secret",
+			reconcile.Result{},
+			nil,
+			&k8sreconcile.KubernetesResourceReconciler{
+				Client: fake.NewFakeClientWithScheme(func() *runtime.Scheme {
+					s := runtime.NewScheme()
+					s.AddKnownTypes(schema.GroupVersion{
+						Group:   "",
+						Version: "v1",
+					}, &corev1.ServiceAccount{
+						TypeMeta: metav1.TypeMeta{
+							Kind:       "ServiceAccount",
+							APIVersion: "v1",
+						},
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "test sa",
+							Namespace: "test namespace",
+						},
+						Secrets: []corev1.ObjectReference{
+							corev1.ObjectReference{
+								Name: "test secret",
+							},
+						},
+					})
+					return s
+				}(),
+					&corev1.ServiceAccount{
+						TypeMeta: metav1.TypeMeta{
+							Kind:       "ServiceAccount",
+							APIVersion: "v1",
+						},
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "test sa",
+							Namespace: "test namespace",
+						},
+					},
+				),
+				Scheme: &runtime.Scheme{},
+				ControllerReferencer: func(owner, object v1.Object, scheme *runtime.Scheme) error {
+					return nil
+				},
+			},
+			log.WithValues("Request.Namespace", "test", "Request.Name", "test"),
+			&custompodautoscalercomv1.CustomPodAutoscaler{
+				TypeMeta: v1.TypeMeta{
+					Kind:       "custompodautoscaler",
+					APIVersion: "apiextensions.k8s.io/v1beta1",
+				},
+				ObjectMeta: v1.ObjectMeta{
+					Name: "testcpa",
+					UID:  "testuid",
+				},
+			},
+			&corev1.ServiceAccount{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "ServiceAccount",
+					APIVersion: "v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test sa",
+					Namespace: "test namespace",
+					OwnerReferences: []v1.OwnerReference{
+						{
+							Kind:       "custompodautoscaler",
+							APIVersion: "apiextensions.k8s.io/v1beta1",
+							Name:       "testcpa",
+							UID:        "testuid",
+						},
+					},
+				},
+			},
+			true,
+			true,
 		},
 	}
 	for _, test := range tests {

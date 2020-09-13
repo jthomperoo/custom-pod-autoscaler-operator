@@ -18,6 +18,7 @@ package reconcile
 
 import (
 	"context"
+
 	"github.com/go-logr/logr"
 	custompodautoscalercomv1 "github.com/jthomperoo/custom-pod-autoscaler-operator/api/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -93,6 +94,14 @@ func (k *KubernetesResourceReconciler) Reconcile(
 		// Only update if object should be provisioned
 		if updatable {
 			reqLogger.Info("Updating k8s object ", "Namespace", obj.GetNamespace(), "Name", obj.GetName())
+			if existingObject.GetObjectKind().GroupVersionKind().Group == "" &&
+				existingObject.GetObjectKind().GroupVersionKind().Version == "v1" &&
+				existingObject.GetObjectKind().GroupVersionKind().Kind == "ServiceAccount" {
+				reqLogger.Info("Service Account update, retaining secrets ", "Namespace", obj.GetNamespace(), "Name", obj.GetName())
+				serviceAccount := existingObject.(*corev1.ServiceAccount)
+				updatedServiceAccount := runtimeObj.(*corev1.ServiceAccount)
+				updatedServiceAccount.Secrets = serviceAccount.Secrets
+			}
 			// If object can be updated
 			err = k.Client.Update(context.Background(), runtimeObj)
 			if err != nil {
