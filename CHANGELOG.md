@@ -5,18 +5,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [v1.0.2] - 2020-09-13
 ### Fixed
 - Bug where the service account was regenerating its secrets on every reconcile, resulting in a pile up of secrets
 that are never garbage collected. Service accounts now retain secrets between reconciles.
 
 ## [v1.0.1] - 2020-08-15
 ### Fixed
-- When deploying using Cluster wide scope to a namespace, the
-`ClusterRoleBinding` no longer only searches in the `default` namespace for the
-`ServiceAccount` - instead it searches in the namespace that the helm chart is
-deployed to. This change is only for the helm deploys, as such the kubectl
-deployment method is no longer recommended, as it only supports deploying to
-the `default` namespace for cluster wide installs.
+- When deploying using Cluster wide scope to a namespace, the `ClusterRoleBinding` no longer only searches in the
+`default` namespace for the `ServiceAccount` - instead it searches in the namespace that the helm chart is deployed to.
+This change is only for the helm deploys, as such the kubectl deployment method is no longer recommended, as it only
+supports deploying to the `default` namespace for cluster wide installs.
 
 ## [v1.0.0] - 2020-07-19
 
@@ -28,28 +28,27 @@ the `default` namespace for cluster wide installs.
 
 ## [v0.6.0] - 2020-06-24
 ### Added
-- New options for deciding if a resource should be provisioned by the CPAO, or if they
-are provided already by the user/another system. All provision options default to
-`true`.
+- New options for deciding if a resource should be provisioned by the CPAO, or if they are provided already by the
+user/another system. All provision options default to `true`.
     - `provisionRole` - determines if a `Role` should be provisioned.
     - `provisionRoleBinding` - determines if a `RoleBinding` should be provisioned.
-    - `provisionServiceAccount` - determines if a `ServiceAccount` should be
-    provisioned.
+    - `provisionServiceAccount` - determines if a `ServiceAccount` should beprovisioned.
     - `provisionPod` - determines if a `Pod` should be provisioned.
 - Resources can now be updated at runtime, without deleting and recreating the CPA.
-    - All resources will be updated using the standard K8s Update procedure, except
-    for `Pod` resources, which will be deleted and recreated, in order to use any
-    new image provided.
+    - All resources will be updated using the standard K8s Update procedure, except for `Pod` resources, which will be
+    deleted and recreated, in order to use any new image provided.
 
 ## [v0.5.0] - 2020-01-18
 ### Added
 - Add permissions to role for managing ReplicationControllers, ReplicaSets, and StatefulSets.
 - Add permissions to use scaling API.
-- When a resource already exists, the operator will check if the assigned CPA has been set as its owner; if it isn't it will set it, if not it will skip it. This can be used by CPAs to modify the resources for the CPA.
+- When a resource already exists, the operator will check if the assigned CPA has been set as its owner; if it isn't it
+will set it, if not it will skip it. This can be used by CPAs to modify the resources for the CPA.
 
 ## [0.4.0] - 2019-11-16
 ### Changed
-- Use ScaleTargetRef rather than a label selector to choose which resource to manage, consistent with Horizontal Pod Autoscaler.
+- Use ScaleTargetRef rather than a label selector to choose which resource to manage, consistent with Horizontal Pod
+Autoscaler.
 - Can now define a PodSpec rather than a Docker image.
 ### Removed
 - PullPolicy removed as it can now be defined in the template PodSpec.
@@ -82,7 +81,8 @@ are provided already by the user/another system. All provision options default t
 - Allow creation/deletion of CPA.
 
 [Unreleased]:
-https://github.com/jthomperoo/custom-pod-autoscaler-operator/compare/v1.0.1...HEAD
+https://github.com/jthomperoo/custom-pod-autoscaler-operator/compare/v1.0.2...HEAD
+[v1.0.2]: https://github.com/jthomperoo/custom-pod-autoscaler-operator/compare/v1.0.1...v1.0.2
 [v1.0.1]: https://github.com/jthomperoo/custom-pod-autoscaler-operator/compare/v1.0.0...v1.0.1
 [v1.0.0]: https://github.com/jthomperoo/custom-pod-autoscaler-operator/compare/v0.7.0...v1.0.0
 [v0.7.0]: https://github.com/jthomperoo/custom-pod-autoscaler-operator/compare/v0.6.0...v0.7.0
