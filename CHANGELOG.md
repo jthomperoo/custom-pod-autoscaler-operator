@@ -6,8 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Fixed
-- Bug where the service account was regenerating it's secrets on every reconcile, resulting in a pile up of secrets
-that are never garbage collected. Service accounts now retain secrets.
+- Bug where the service account was regenerating its secrets on every reconcile, resulting in a pile up of secrets
+that are never garbage collected. Service accounts now retain secrets between reconciles.
 
 ## [v1.0.1] - 2020-08-15
 ### Fixed
