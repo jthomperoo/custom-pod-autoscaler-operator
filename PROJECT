@@ -1,0 +1,11 @@
+domain: custompodautoscaler.com
+layout: go.kubebuilder.io/v2
+projectName: custom-pod-autoscaler-operator
+repo: github.com/jthomperoo/custom-pod-autoscaler-operator
+resources:
+- group: custompodautoscaler.com
+  kind: CustomResourceDefinition
+  version: v1
+version: 3-alpha
+plugins:
+  go.sdk.operatorframework.io/v2-alpha: {}
