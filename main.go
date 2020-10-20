@@ -1,5 +1,5 @@
 /*
-
+Copyright 2020 The Custom Pod Autoscaler Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,19 +18,19 @@ package main
 
 import (
 	"flag"
-	"github.com/jthomperoo/custom-pod-autoscaler-operator/reconcile"
 	"os"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	custompodautoscalercomv1 "github.com/jthomperoo/custom-pod-autoscaler-operator/api/v1"
 	"github.com/jthomperoo/custom-pod-autoscaler-operator/controllers"
+	"github.com/jthomperoo/custom-pod-autoscaler-operator/reconcile"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -62,7 +62,7 @@ func main() {
 		MetricsBindAddress: metricsAddr,
 		Port:               9443,
 		LeaderElection:     enableLeaderElection,
-		LeaderElectionID:   "d00603b0.my.domain",
+		LeaderElectionID:   "d00603b0.custompodautoscaler.com",
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")

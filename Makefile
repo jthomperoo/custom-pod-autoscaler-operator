@@ -2,21 +2,21 @@ REGISTRY = custompodautoscaler
 NAME = operator
 VERSION = latest
 
-default: vendor
+# Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
+CRD_OPTIONS ?= "crd:trivialVersions=true"
+
+default:
 	@echo "=============Building============="
 	CGO_ENABLED=0 GOOS=linux go build -mod vendor -o dist/$(NAME) main.go
 	cp LICENSE dist/LICENSE
 
-vendor:
-	go mod vendor
-
 # Run linting with golint
-lint: vendor
+lint:
 	@echo "=============Linting============="
 	go list -mod vendor ./... | grep -v /vendor/ | xargs -L1 golint -set_exit_status
 
 # Run tests
-test: vendor
+test:
 	@echo "=============Running tests============="
 	CGO_ENABLED=0 GOOS=linux go test -mod vendor ./... -cover -coverprofile unit_cover.out
 
@@ -24,15 +24,11 @@ test: vendor
 docker: default
 	docker build . -t $(REGISTRY)/$(NAME):$(VERSION)
 
-# Generate code
-generate:
-	@echo "=============Generating YAML============="
+# Generate code and manifests
+generate: controller-gen
+	@echo "=============Generating Golang and YAML============="
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
-	$(CONTROLLER_GEN) $(CRD_OPTIONS) crd paths="./..." output:crd:artifacts:config=helm/templates/crd
-
-# Run against the configured Kubernetes cluster in ~/.kube/config
-run:
-	go run ./main.go
+	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=helm/templates/crd
 
 # find or download controller-gen
 # download controller-gen if necessary

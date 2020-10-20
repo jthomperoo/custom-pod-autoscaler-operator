@@ -45,11 +45,14 @@ Developing this project requires these dependencies:
 
 * Go >= 1.13
 * Golint
-* [operator-sdk `v0.19.0`](https://github.com/operator-framework/operator-sdk) -
+* [operator-sdk `v1.1.0`](https://github.com/operator-framework/operator-sdk) -
 [install guide](https://sdk.operatorframework.io/docs/install-operator-sdk/)
 
 ### Commands
 
-* `make` - builds the image for the operator
+* `go mod vendor` - downloads the Go dependencies to the vendor directory.
+* `make` - builds the operator binary.
+* `make docker` - build the docker image for the operator.
 * `make lint` - lints the codebase
+* `make test` - runs the Go tests.
 * `make generate` - generates boilerplate and YAML config for the operator

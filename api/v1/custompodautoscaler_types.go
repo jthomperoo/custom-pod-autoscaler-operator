@@ -19,9 +19,11 @@ package v1
 // Important: Run "make generate" to regenerate code after modifying this file
 
 import (
-	autoscaling "k8s.io/api/autoscaling/v1"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	autoscaling "k8s.io/api/autoscaling/v1"
+
+	corev1 "k8s.io/api/core/v1"
 )
 
 // CustomPodAutoscalerConfig defines the configuration options that can be passed to the CustomPodAutoscaler
@@ -48,6 +50,8 @@ type CustomPodAutoscalerSpec struct {
 type CustomPodAutoscalerStatus struct{}
 
 // CustomPodAutoscaler is the Schema for the custompodautoscalers API
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:shortName=cpa
