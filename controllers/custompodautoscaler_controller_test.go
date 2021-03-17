@@ -19,8 +19,9 @@ package controllers_test
 import (
 	"context"
 	"errors"
-	"sigs.k8s.io/controller-runtime/pkg/event"
 	"testing"
+
+	"sigs.k8s.io/controller-runtime/pkg/event"
 
 	"github.com/go-logr/logr"
 	"github.com/google/go-cmp/cmp"
@@ -28,13 +29,13 @@ import (
 	"github.com/jthomperoo/custom-pod-autoscaler-operator/controllers"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	logf "sigs.k8s.io/controller-runtime/pkg/runtime/log"
 )
 
 func TestPrimaryPredicate(t *testing.T) {
@@ -114,46 +115,56 @@ func (f *fakek8sReconciler) Reconcile(
 }
 
 type fakeClient struct {
-	get         func(ctx context.Context, key client.ObjectKey, obj runtime.Object) error
-	list        func(ctx context.Context, list runtime.Object, opts ...client.ListOption) error
-	create      func(ctx context.Context, obj runtime.Object, opts ...client.CreateOption) error
-	delete      func(ctx context.Context, obj runtime.Object, opts ...client.DeleteOption) error
-	update      func(ctx context.Context, obj runtime.Object, opts ...client.UpdateOption) error
-	patch       func(ctx context.Context, obj runtime.Object, patch client.Patch, opts ...client.PatchOption) error
-	deleteAllOf func(ctx context.Context, obj runtime.Object, opts ...client.DeleteAllOfOption) error
+	get         func(ctx context.Context, key client.ObjectKey, obj client.Object) error
+	list        func(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error
+	create      func(ctx context.Context, obj client.Object, opts ...client.CreateOption) error
+	delete      func(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error
+	update      func(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error
+	patch       func(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error
+	deleteAllOf func(ctx context.Context, obj client.Object, opts ...client.DeleteAllOfOption) error
 	status      func() client.StatusWriter
+	scheme      func() *runtime.Scheme
+	restMapper  func() meta.RESTMapper
 }
 
-func (f *fakeClient) Get(ctx context.Context, key client.ObjectKey, obj runtime.Object) error {
+func (f *fakeClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object) error {
 	return f.get(ctx, key, obj)
 }
 
-func (f *fakeClient) List(ctx context.Context, list runtime.Object, opts ...client.ListOption) error {
+func (f *fakeClient) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
 	return f.list(ctx, list, opts...)
 }
 
-func (f *fakeClient) Create(ctx context.Context, obj runtime.Object, opts ...client.CreateOption) error {
+func (f *fakeClient) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
 	return f.create(ctx, obj, opts...)
 }
 
-func (f *fakeClient) Delete(ctx context.Context, obj runtime.Object, opts ...client.DeleteOption) error {
+func (f *fakeClient) Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
 	return f.delete(ctx, obj, opts...)
 }
 
-func (f *fakeClient) Update(ctx context.Context, obj runtime.Object, opts ...client.UpdateOption) error {
+func (f *fakeClient) Update(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error {
 	return f.update(ctx, obj, opts...)
 }
 
-func (f *fakeClient) Patch(ctx context.Context, obj runtime.Object, patch client.Patch, opts ...client.PatchOption) error {
+func (f *fakeClient) Patch(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
 	return f.patch(ctx, obj, patch, opts...)
 }
 
-func (f *fakeClient) DeleteAllOf(ctx context.Context, obj runtime.Object, opts ...client.DeleteAllOfOption) error {
+func (f *fakeClient) DeleteAllOf(ctx context.Context, obj client.Object, opts ...client.DeleteAllOfOption) error {
 	return f.deleteAllOf(ctx, obj, opts...)
 }
 
 func (f *fakeClient) Status() client.StatusWriter {
 	return f.status()
+}
+
+func (f *fakeClient) Scheme() *runtime.Scheme {
+	return f.scheme()
+}
+
+func (f *fakeClient) RESTMapper() meta.RESTMapper {
+	return f.restMapper()
 }
 
 func TestReconcile(t *testing.T) {
@@ -200,7 +211,7 @@ func TestReconcile(t *testing.T) {
 			errors.New("Error getting CPA"),
 			func() *fakeClient {
 				fclient := &fakeClient{}
-				fclient.get = func(ctx context.Context, key client.ObjectKey, obj runtime.Object) error {
+				fclient.get = func(ctx context.Context, key client.ObjectKey, obj client.Object) error {
 					return errors.New("Error getting CPA")
 				}
 				return fclient
@@ -410,7 +421,7 @@ func TestReconcile(t *testing.T) {
 						Template: corev1.PodTemplateSpec{
 							Spec: corev1.PodSpec{
 								Containers: []corev1.Container{
-									corev1.Container{
+									{
 										Name: "test container",
 									},
 								},
@@ -442,11 +453,11 @@ func TestReconcile(t *testing.T) {
 					if ok {
 						// Default env vars
 						expectedEnvVars := []corev1.EnvVar{
-							corev1.EnvVar{
+							{
 								Name:  "scaleTargetRef",
 								Value: `{"kind":"","name":""}`,
 							},
-							corev1.EnvVar{
+							{
 								Name:  "namespace",
 								Value: "test-namespace",
 							},
@@ -487,22 +498,22 @@ func TestReconcile(t *testing.T) {
 						Template: corev1.PodTemplateSpec{
 							Spec: corev1.PodSpec{
 								Containers: []corev1.Container{
-									corev1.Container{
+									{
 										Name: "test container",
 									},
 								},
 							},
 						},
 						Config: []custompodautoscalercomv1.CustomPodAutoscalerConfig{
-							custompodautoscalercomv1.CustomPodAutoscalerConfig{
+							{
 								Name:  "first env var",
 								Value: "first env var value",
 							},
-							custompodautoscalercomv1.CustomPodAutoscalerConfig{
+							{
 								Name:  "second env var",
 								Value: "second env var value",
 							},
-							custompodautoscalercomv1.CustomPodAutoscalerConfig{
+							{
 								Name:  "third env var",
 								Value: "third env var value",
 							},
@@ -528,23 +539,23 @@ func TestReconcile(t *testing.T) {
 					pod, ok := obj.(*corev1.Pod)
 					if ok {
 						expectedEnvVars := []corev1.EnvVar{
-							corev1.EnvVar{
+							{
 								Name:  "scaleTargetRef",
 								Value: `{"kind":"","name":""}`,
 							},
-							corev1.EnvVar{
+							{
 								Name:  "namespace",
 								Value: "test-namespace",
 							},
-							corev1.EnvVar{
+							{
 								Name:  "first env var",
 								Value: "first env var value",
 							},
-							corev1.EnvVar{
+							{
 								Name:  "second env var",
 								Value: "second env var value",
 							},
-							corev1.EnvVar{
+							{
 								Name:  "third env var",
 								Value: "third env var value",
 							},
@@ -585,7 +596,7 @@ func TestReconcile(t *testing.T) {
 						Template: corev1.PodTemplateSpec{
 							Spec: corev1.PodSpec{
 								Containers: []corev1.Container{
-									corev1.Container{
+									{
 										Name: "test container",
 									},
 								},
@@ -617,11 +628,11 @@ func TestReconcile(t *testing.T) {
 					pod, ok := obj.(*corev1.Pod)
 					if ok {
 						expectedEnvVars := []corev1.EnvVar{
-							corev1.EnvVar{
+							{
 								Name:  "scaleTargetRef",
 								Value: `{"kind":"","name":""}`,
 							},
-							corev1.EnvVar{
+							{
 								Name:  "namespace",
 								Value: "test-namespace",
 							},
@@ -662,10 +673,10 @@ func TestReconcile(t *testing.T) {
 						Template: corev1.PodTemplateSpec{
 							Spec: corev1.PodSpec{
 								Containers: []corev1.Container{
-									corev1.Container{
+									{
 										Name: "test container",
 										Env: []corev1.EnvVar{
-											corev1.EnvVar{
+											{
 												Name:  "test container env name",
 												Value: "test container env value",
 											},
@@ -695,15 +706,15 @@ func TestReconcile(t *testing.T) {
 					pod, ok := obj.(*corev1.Pod)
 					if ok {
 						expectedEnvVars := []corev1.EnvVar{
-							corev1.EnvVar{
+							{
 								Name:  "test container env name",
 								Value: "test container env value",
 							},
-							corev1.EnvVar{
+							{
 								Name:  "scaleTargetRef",
 								Value: `{"kind":"","name":""}`,
 							},
-							corev1.EnvVar{
+							{
 								Name:  "namespace",
 								Value: "test-namespace",
 							},
@@ -728,9 +739,9 @@ func TestReconcile(t *testing.T) {
 				Client:                       test.client,
 				Scheme:                       runtime.NewScheme(),
 				KubernetesResourceReconciler: test.k8sreconciler,
-				Log:                          logf.Log.WithName("controller_custompodautoscaler"),
+				Log:                          logr.Discard(),
 			}
-			result, err := reconciler.Reconcile(test.request)
+			result, err := reconciler.Reconcile(context.Background(), test.request)
 			if !cmp.Equal(err, test.expectedErr, equateErrorMessage) {
 				t.Errorf("Error mismatch (-want +got):\n%s", cmp.Diff(test.expectedErr, err, equateErrorMessage))
 				return

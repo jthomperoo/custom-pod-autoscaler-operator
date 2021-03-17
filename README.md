@@ -12,15 +12,17 @@
 </p>
 
 # Custom Pod Autoscaler Operator
-This is the operator for managing Custom Pod Autoscalers (CPA). This allows you to add
-your own CPAs to the cluster to manage autoscaling deployments, enabling this is a
-requirement before you can add your own CPAs.
 
-The Custom Pod Autoscaler Operator is part of the
-[Custom Pod Autoscaler Framework](https://custom-pod-autoscaler.readthedocs.io/en/stable/).
+This is the operator for managing Custom Pod Autoscalers (CPA). This allows you to add your own CPAs to the cluster to
+manage autoscaling deployments, enabling this is a requirement before you can add your own CPAs.
+
+The Custom Pod Autoscaler Operator is part of the [Custom Pod Autoscaler
+Framework](https://custom-pod-autoscaler.readthedocs.io/en/stable/).
 
 ## Installation
+
 ### Quick start
+
 Run this to install the Operator and Custom Pod Autoscaler definition with cluster-wide scope on your cluster:
 ```
 VERSION=v1.0.2
@@ -29,12 +31,13 @@ helm install ${HELM_CHART} https://github.com/jthomperoo/custom-pod-autoscaler-o
 ```
 
 ### Advanced
-See the [install guide](INSTALL.md) to see more in depth installation options,
-such as namespace specific installs and installation using kubectl.
+
+See the [install guide](INSTALL.md) to see more in depth installation options, such as namespace specific installs and
+installation using kubectl.
 
 ## Usage
-See the [usage guide](USAGE.md) to see some simple usage options. For more indepth
-examples, check out the
+
+See the [usage guide](USAGE.md) to see some simple usage options. For more indepth examples, check out the
 [Custom Pod Autoscaler repo](https://github.com/jthomperoo/custom-pod-autoscaler).
 
 ## Developing
@@ -43,14 +46,13 @@ examples, check out the
 
 Developing this project requires these dependencies:
 
-* Go >= 1.13
+* Go `>= 1.13`
 * Golint
-* [operator-sdk `v1.1.0`](https://github.com/operator-framework/operator-sdk) -
-[install guide](https://sdk.operatorframework.io/docs/install-operator-sdk/)
+* [operator-sdk `v1.5.0`](https://github.com/operator-framework/operator-sdk) -
+[install guide](https://sdk.operatorframework.io/docs/installation/)
 
 ### Commands
 
-* `go mod vendor` - downloads the Go dependencies to the vendor directory.
 * `make` - builds the operator binary.
 * `make docker` - build the docker image for the operator.
 * `make lint` - lints the codebase

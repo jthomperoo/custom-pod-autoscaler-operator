@@ -6,7 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Changed
-- Upgrade to stable Operator SDK version `v1.1.0`.
+- Upgrade to stable Operator SDK version `v1.5.0`.
+### Fixed
+- Bug that did not allow the operator to install correctly on K8s >= `v1.18.x`
 
 ## [v1.0.2] - 2020-09-13
 ### Fixed

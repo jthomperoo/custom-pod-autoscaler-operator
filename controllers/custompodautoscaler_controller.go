@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -70,7 +71,7 @@ var PrimaryPred = predicate.Funcs{
 	},
 }
 
-// SecondaryPred is the predicate that filters events for the CustomPodAutoscaler's secondary 
+// SecondaryPred is the predicate that filters events for the CustomPodAutoscaler's secondary
 // resources (deployment/service/role/rolebinding).
 var SecondaryPred = predicate.Funcs{
 	UpdateFunc: func(e event.UpdateEvent) bool {
@@ -91,13 +92,12 @@ var SecondaryPred = predicate.Funcs{
 // and what is in the CustomPodAutoscaler.Spec
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
-func (r *CustomPodAutoscalerReconciler) Reconcile(req ctrl.Request) (ctrl.Result, error) {
-	_ = context.Background()
+func (r *CustomPodAutoscalerReconciler) Reconcile(context context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := r.Log.WithValues("Request", req.NamespacedName)
 
 	// Fetch the CustomPodAutoscaler instance
 	instance := &custompodautoscalercomv1.CustomPodAutoscaler{}
-	err := r.Client.Get(context.Background(), req.NamespacedName, instance)
+	err := r.Client.Get(context, req.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
