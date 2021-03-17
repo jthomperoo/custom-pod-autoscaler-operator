@@ -5,18 +5,20 @@ VERSION = latest
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true"
 
-default:
+default: vendor_modules generate
 	@echo "=============Building============="
 	CGO_ENABLED=0 GOOS=linux go build -mod vendor -o dist/$(NAME) main.go
 	cp LICENSE dist/LICENSE
 
 # Run linting with golint
-lint:
+lint: vendor_modules generate
 	@echo "=============Linting============="
+	go mod tidy
+	gofmt -w .
 	go list -mod vendor ./... | grep -v /vendor/ | xargs -L1 golint -set_exit_status
 
 # Run tests
-test:
+test: vendor_modules generate
 	@echo "=============Running tests============="
 	CGO_ENABLED=0 GOOS=linux go test -mod vendor ./... -cover -coverprofile unit_cover.out
 
@@ -29,6 +31,9 @@ generate: controller-gen
 	@echo "=============Generating Golang and YAML============="
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=helm/templates/crd
+
+vendor_modules:
+	go mod vendor
 
 # find or download controller-gen
 # download controller-gen if necessary

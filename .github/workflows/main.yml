@@ -47,13 +47,13 @@ jobs:
         export PATH=$PATH:$(go env GOPATH)/bin
         GO111MODULE=off go get -u golang.org/x/lint/golint
 
-        go mod vendor
-
-        make lint
+        make vendor_modules
 
         # Run code generation
         make generate
-        # Check diff for changes in committed code and generated code
+        # Lint and beautify the codebase
+        make lint
+        # Check diff for changes in committed code and generated/linted code
         git diff --exit-code
 
         make test

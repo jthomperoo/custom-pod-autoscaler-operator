@@ -49,7 +49,7 @@ func (k *KubernetesResourceReconciler) Reconcile(
 	shouldProvision bool,
 	updatable bool,
 ) (reconcile.Result, error) {
-	runtimeObj := obj.(runtime.Object)
+	runtimeObj := obj.(client.Object)
 	// Set CustomPodAutoscaler instance as the owner and controller
 	err := k.ControllerReferencer(instance, obj, k.Scheme)
 	if err != nil {
@@ -57,7 +57,7 @@ func (k *KubernetesResourceReconciler) Reconcile(
 	}
 
 	// Check if k8s object already exists
-	existingObject := runtimeObj.DeepCopyObject()
+	existingObject := runtimeObj
 	err = k.Client.Get(context.Background(), types.NamespacedName{Name: obj.GetName(), Namespace: obj.GetNamespace()}, existingObject)
 	if err != nil {
 		if !errors.IsNotFound(err) {
