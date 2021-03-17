@@ -22,13 +22,6 @@ jobs:
 
     - name: Get build dependencies
       run: |
-        # operator-sdk
-        RELEASE_VERSION=v1.5.0
-        curl -LO https://github.com/operator-framework/operator-sdk/releases/download/${RELEASE_VERSION}/operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu
-        chmod +x operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu
-        sudo mkdir -p /usr/local/bin/
-        sudo cp operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu /usr/local/bin/operator-sdk
-        rm operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu
         # controller-gen
         CONTROLLER_GEN_TMP_DIR=$(mktemp -d)
         cd $CONTROLLER_GEN_TMP_DIR
