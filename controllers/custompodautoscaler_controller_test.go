@@ -38,6 +38,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
+func boolPtr(val bool) *bool {
+	return &val
+}
+
 func TestPrimaryPredicate(t *testing.T) {
 	result := controllers.PrimaryPred.Create(event.CreateEvent{})
 	if !cmp.Equal(result, true) {
@@ -727,6 +731,59 @@ func TestReconcile(t *testing.T) {
 						}
 						return reconcile.Result{}, nil
 					}
+					return reconcile.Result{}, nil
+				}
+				return reconciler
+			}(),
+		},
+		{
+			"Successfully reconcile while requesting a role with access to the metrics server",
+			reconcile.Result{},
+			nil,
+			fake.NewFakeClientWithScheme(func() *runtime.Scheme {
+				s := runtime.NewScheme()
+				s.AddKnownTypes(custompodautoscalercomv1.GroupVersion, &custompodautoscalercomv1.CustomPodAutoscaler{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "test-namespace",
+					},
+				})
+				return s
+			}(),
+				&custompodautoscalercomv1.CustomPodAutoscaler{
+					Spec: custompodautoscalercomv1.CustomPodAutoscalerSpec{
+						Template: corev1.PodTemplateSpec{
+							Spec: corev1.PodSpec{
+								Containers: []corev1.Container{
+									{
+										Name: "test container",
+									},
+								},
+							},
+						},
+						RoleRequiresMetricsServer: boolPtr(true),
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "test-namespace",
+					},
+				},
+			),
+			reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      "test",
+					Namespace: "test-namespace",
+				},
+			},
+			func() *fakek8sReconciler {
+				reconciler := &fakek8sReconciler{}
+				reconciler.reconcile = func(
+					reqLogger logr.Logger,
+					instance *custompodautoscalercomv1.CustomPodAutoscaler,
+					obj metav1.Object,
+					shouldProvision bool,
+					updatable bool,
+				) (reconcile.Result, error) {
 					return reconcile.Result{}, nil
 				}
 				return reconciler

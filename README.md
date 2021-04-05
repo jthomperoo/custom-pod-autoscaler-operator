@@ -13,13 +13,14 @@
 
 # Custom Pod Autoscaler Operator
 
-This is the operator for managing Custom Pod Autoscalers (CPA). This allows you to add your own CPAs to the cluster to
-manage autoscaling deployments, enabling this is a requirement before you can add your own CPAs.
-
-The Custom Pod Autoscaler Operator is part of the [Custom Pod Autoscaler
-Framework](https://custom-pod-autoscaler.readthedocs.io/en/stable/).
+This is the operator for managing [Custom Pod Autoscalers](https://github.com/jthomperoo/custom-pod-autoscaler) (CPA).
+This allows you to add your own CPAs to the cluster to manage autoscaling deployments, enabling this is a requirement
+before you can add your own CPAs.
 
 ## Installation
+
+See the [install guide](INSTALL.md) to see more in depth installation options, such as namespace specific installs and
+installation using kubectl.
 
 ### Quick start
 
@@ -29,11 +30,6 @@ VERSION=v1.0.3
 HELM_CHART=custom-pod-autoscaler-operator
 helm install ${HELM_CHART} https://github.com/jthomperoo/custom-pod-autoscaler-operator/releases/download/${VERSION}/custom-pod-autoscaler-operator-${VERSION}.tgz
 ```
-
-### Advanced
-
-See the [install guide](INSTALL.md) to see more in depth installation options, such as namespace specific installs and
-installation using kubectl.
 
 ## Usage
 
@@ -46,15 +42,16 @@ See the [usage guide](USAGE.md) to see some simple usage options. For more indep
 
 Developing this project requires these dependencies:
 
-* Go `>= 1.13`
-* Golint
-* [operator-sdk `v1.5.0`](https://github.com/operator-framework/operator-sdk) -
-[install guide](https://sdk.operatorframework.io/docs/installation/)
+* [Go](https://golang.org/doc/install) == `1.16`
+* [Golint](https://github.com/golang/lint) == `v0.0.0-20201208152925-83fdc39ff7b5`
+* [operator-sdk](https://github.com/operator-framework/operator-sdk) == `v1.5.0`
 
 ### Commands
 
 * `make` - builds the operator binary.
 * `make docker` - build the docker image for the operator.
-* `make lint` - lints the codebase
+* `make lint` - lints the codebase.
+* `make beautify` - beautifies the codebase, must be run to pass the CI.
 * `make test` - runs the Go tests.
-* `make generate` - generates boilerplate and YAML config for the operator
+* `make generate` - generates boilerplate and YAML config for the operator.
+* `make view_coverage` - opens up any generated coverage reports in the browser.
