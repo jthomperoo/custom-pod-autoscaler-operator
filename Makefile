@@ -19,7 +19,6 @@ beautify: vendor_modules
 	@echo "=============Beautifying============="
 	gofmt -s -w .
 	go mod tidy
-	find algorithms -name '*.py' -print0 | xargs -0 yapf -i
 
 # Run tests
 test: vendor_modules generate
