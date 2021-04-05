@@ -591,7 +591,7 @@ func TestReconcile(t *testing.T) {
 							Namespace: "test namespace",
 						},
 						Secrets: []corev1.ObjectReference{
-							corev1.ObjectReference{
+							{
 								Name: "test secret",
 							},
 						},

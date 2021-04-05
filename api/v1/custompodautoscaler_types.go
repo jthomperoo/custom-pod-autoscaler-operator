@@ -1,5 +1,5 @@
 /*
-Copyright 2020 The Custom Pod Autoscaler Authors.
+Copyright 2021 The Custom Pod Autoscaler Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -39,11 +39,12 @@ type CustomPodAutoscalerSpec struct {
 	// ScaleTargetRef defining what the Custom Pod Autoscaler should manage
 	ScaleTargetRef autoscaling.CrossVersionObjectReference `json:"scaleTargetRef"`
 	// Configuration options to be delivered as environment variables to the container
-	Config                  []CustomPodAutoscalerConfig `json:"config,omitempty"`
-	ProvisionRole           *bool                       `json:"provisionRole,omitempty"`
-	ProvisionRoleBinding    *bool                       `json:"provisionRoleBinding,omitempty"`
-	ProvisionServiceAccount *bool                       `json:"provisionServiceAccount,omitempty"`
-	ProvisionPod            *bool                       `json:"provisionPod,omitempty"`
+	Config                    []CustomPodAutoscalerConfig `json:"config,omitempty"`
+	ProvisionRole             *bool                       `json:"provisionRole,omitempty"`
+	ProvisionRoleBinding      *bool                       `json:"provisionRoleBinding,omitempty"`
+	ProvisionServiceAccount   *bool                       `json:"provisionServiceAccount,omitempty"`
+	ProvisionPod              *bool                       `json:"provisionPod,omitempty"`
+	RoleRequiresMetricsServer *bool                       `json:"roleRequiresMetricsServer,omitempty"`
 }
 
 // CustomPodAutoscalerStatus defines the observed state of CustomPodAutoscaler

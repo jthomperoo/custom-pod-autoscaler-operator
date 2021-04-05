@@ -125,6 +125,10 @@ func (r *CustomPodAutoscalerReconciler) Reconcile(context context.Context, req c
 		defaultVal := true
 		instance.Spec.ProvisionPod = &defaultVal
 	}
+	if instance.Spec.RoleRequiresMetricsServer == nil {
+		defaultVal := false
+		instance.Spec.RoleRequiresMetricsServer = &defaultVal
+	}
 
 	// Parse scaleTargetRef
 	scaleTargetRef, err := json.Marshal(instance.Spec.ScaleTargetRef)
@@ -151,25 +155,53 @@ func (r *CustomPodAutoscalerReconciler) Reconcile(context context.Context, req c
 		return result, err
 	}
 
-	// Define a new Role object
-	role := &rbacv1.Role{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      instance.Name,
-			Namespace: instance.Namespace,
-			Labels:    labels,
-		},
-		Rules: []rbacv1.PolicyRule{
-			{
-				APIGroups: []string{""},
-				Resources: []string{"pods", "replicationcontrollers", "replicationcontrollers/scale"},
-				Verbs:     []string{"*"},
+	var role *rbacv1.Role
+
+	if *instance.Spec.RoleRequiresMetricsServer {
+		role = &rbacv1.Role{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      instance.Name,
+				Namespace: instance.Namespace,
+				Labels:    labels,
 			},
-			{
-				APIGroups: []string{"apps"},
-				Resources: []string{"deployments", "deployments/scale", "replicasets", "replicasets/scale", "statefulsets", "statefulsets/scale"},
-				Verbs:     []string{"*"},
+			Rules: []rbacv1.PolicyRule{
+				{
+					APIGroups: []string{""},
+					Resources: []string{"pods", "replicationcontrollers", "replicationcontrollers/scale"},
+					Verbs:     []string{"*"},
+				},
+				{
+					APIGroups: []string{"apps"},
+					Resources: []string{"deployments", "deployments/scale", "replicasets", "replicasets/scale", "statefulsets", "statefulsets/scale"},
+					Verbs:     []string{"*"},
+				},
+				{
+					APIGroups: []string{"metrics.k8s.io"},
+					Resources: []string{"*"},
+					Verbs:     []string{"*"},
+				},
 			},
-		},
+		}
+	} else {
+		role = &rbacv1.Role{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      instance.Name,
+				Namespace: instance.Namespace,
+				Labels:    labels,
+			},
+			Rules: []rbacv1.PolicyRule{
+				{
+					APIGroups: []string{""},
+					Resources: []string{"pods", "replicationcontrollers", "replicationcontrollers/scale"},
+					Verbs:     []string{"*"},
+				},
+				{
+					APIGroups: []string{"apps"},
+					Resources: []string{"deployments", "deployments/scale", "replicasets", "replicasets/scale", "statefulsets", "statefulsets/scale"},
+					Verbs:     []string{"*"},
+				},
+			},
+		}
 	}
 	result, err = r.KubernetesResourceReconciler.Reconcile(reqLogger, instance, role, *instance.Spec.ProvisionRole, true)
 	if err != nil {

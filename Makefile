@@ -13,9 +13,13 @@ default: vendor_modules generate
 # Run linting with golint
 lint: vendor_modules generate
 	@echo "=============Linting============="
-	go mod tidy
-	gofmt -w .
 	go list -mod vendor ./... | grep -v /vendor/ | xargs -L1 golint -set_exit_status
+
+beautify: vendor_modules
+	@echo "=============Beautifying============="
+	gofmt -s -w .
+	go mod tidy
+	find algorithms -name '*.py' -print0 | xargs -0 yapf -i
 
 # Run tests
 test: vendor_modules generate
@@ -34,6 +38,10 @@ generate: controller-gen
 
 vendor_modules:
 	go mod vendor
+
+view_coverage:
+	@echo "=============Loading coverage HTML============="
+	go tool cover -html=unit_cover.out
 
 # find or download controller-gen
 # download controller-gen if necessary
