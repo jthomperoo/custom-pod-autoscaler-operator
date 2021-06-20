@@ -176,7 +176,7 @@ func (r *CustomPodAutoscalerReconciler) Reconcile(context context.Context, req c
 					Verbs:     []string{"*"},
 				},
 				{
-					APIGroups: []string{"metrics.k8s.io"},
+					APIGroups: []string{"metrics.k8s.io", "custom.metrics.k8s.io", "external.metrics.k8s.io"},
 					Resources: []string{"*"},
 					Verbs:     []string{"*"},
 				},
