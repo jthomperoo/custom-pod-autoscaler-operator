@@ -25,7 +25,7 @@ installation using kubectl.
 
 Run this to install the Operator and Custom Pod Autoscaler definition with cluster-wide scope on your cluster:
 ```
-VERSION=v1.1.0
+VERSION=v1.1.1
 HELM_CHART=custom-pod-autoscaler-operator
 helm install ${HELM_CHART} https://github.com/jthomperoo/custom-pod-autoscaler-operator/releases/download/${VERSION}/custom-pod-autoscaler-operator-${VERSION}.tgz
 ```
