@@ -129,6 +129,10 @@ func (r *CustomPodAutoscalerReconciler) Reconcile(context context.Context, req c
 		defaultVal := false
 		instance.Spec.RoleRequiresMetricsServer = &defaultVal
 	}
+	if instance.Spec.RoleRequiresArgoRollouts == nil {
+		defaultVal := false
+		instance.Spec.RoleRequiresArgoRollouts = &defaultVal
+	}
 
 	// Parse scaleTargetRef
 	scaleTargetRef, err := json.Marshal(instance.Spec.ScaleTargetRef)
@@ -155,54 +159,42 @@ func (r *CustomPodAutoscalerReconciler) Reconcile(context context.Context, req c
 		return result, err
 	}
 
-	var role *rbacv1.Role
+	role := &rbacv1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      instance.Name,
+			Namespace: instance.Namespace,
+			Labels:    labels,
+		},
+		Rules: []rbacv1.PolicyRule{
+			{
+				APIGroups: []string{""},
+				Resources: []string{"pods", "replicationcontrollers", "replicationcontrollers/scale"},
+				Verbs:     []string{"*"},
+			},
+			{
+				APIGroups: []string{"apps"},
+				Resources: []string{"deployments", "deployments/scale", "replicasets", "replicasets/scale", "statefulsets", "statefulsets/scale"},
+				Verbs:     []string{"*"},
+			},
+		},
+	}
 
 	if *instance.Spec.RoleRequiresMetricsServer {
-		role = &rbacv1.Role{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      instance.Name,
-				Namespace: instance.Namespace,
-				Labels:    labels,
-			},
-			Rules: []rbacv1.PolicyRule{
-				{
-					APIGroups: []string{""},
-					Resources: []string{"pods", "replicationcontrollers", "replicationcontrollers/scale"},
-					Verbs:     []string{"*"},
-				},
-				{
-					APIGroups: []string{"apps"},
-					Resources: []string{"deployments", "deployments/scale", "replicasets", "replicasets/scale", "statefulsets", "statefulsets/scale"},
-					Verbs:     []string{"*"},
-				},
-				{
-					APIGroups: []string{"metrics.k8s.io", "custom.metrics.k8s.io", "external.metrics.k8s.io"},
-					Resources: []string{"*"},
-					Verbs:     []string{"*"},
-				},
-			},
-		}
-	} else {
-		role = &rbacv1.Role{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      instance.Name,
-				Namespace: instance.Namespace,
-				Labels:    labels,
-			},
-			Rules: []rbacv1.PolicyRule{
-				{
-					APIGroups: []string{""},
-					Resources: []string{"pods", "replicationcontrollers", "replicationcontrollers/scale"},
-					Verbs:     []string{"*"},
-				},
-				{
-					APIGroups: []string{"apps"},
-					Resources: []string{"deployments", "deployments/scale", "replicasets", "replicasets/scale", "statefulsets", "statefulsets/scale"},
-					Verbs:     []string{"*"},
-				},
-			},
-		}
+		role.Rules = append(role.Rules, rbacv1.PolicyRule{
+			APIGroups: []string{"metrics.k8s.io", "custom.metrics.k8s.io", "external.metrics.k8s.io"},
+			Resources: []string{"*"},
+			Verbs:     []string{"*"},
+		})
 	}
+
+	if *instance.Spec.RoleRequiresArgoRollouts {
+		role.Rules = append(role.Rules, rbacv1.PolicyRule{
+			APIGroups: []string{"argoproj.io"},
+			Resources: []string{"rollouts", "rollouts/scale"},
+			Verbs:     []string{"*"},
+		})
+	}
+
 	result, err = r.KubernetesResourceReconciler.Reconcile(reqLogger, instance, role, *instance.Spec.ProvisionRole, true)
 	if err != nil {
 		return result, err

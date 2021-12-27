@@ -45,6 +45,7 @@ type CustomPodAutoscalerSpec struct {
 	ProvisionServiceAccount   *bool                       `json:"provisionServiceAccount,omitempty"`
 	ProvisionPod              *bool                       `json:"provisionPod,omitempty"`
 	RoleRequiresMetricsServer *bool                       `json:"roleRequiresMetricsServer,omitempty"`
+	RoleRequiresArgoRollouts  *bool                       `json:"roleRequiresArgoRollouts,omitempty"`
 }
 
 // CustomPodAutoscalerStatus defines the observed state of CustomPodAutoscaler

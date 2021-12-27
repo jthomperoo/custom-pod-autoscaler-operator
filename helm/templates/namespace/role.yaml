@@ -36,6 +36,12 @@ rules:
   verbs:
   - '*'
 - apiGroups:
+  - argoproj.io
+  resources:
+  - rollouts
+  verbs:
+  - '*'
+- apiGroups:
   - monitoring.coreos.com
   resources:
   - servicemonitors
@@ -50,12 +56,6 @@ rules:
   - deployments/finalizers
   verbs:
   - update
-- apiGroups:
-  - apps
-  resources:
-  - replicasets
-  verbs:
-  - get
 - apiGroups:
   - custompodautoscaler.com
   resources:
