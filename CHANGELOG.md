@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [v1.2.0] - 2021-12-27
 ### Added
 - Support for Argo Rollouts, new option `roleRequiresArgoRollouts` which will add the required Role permissions to
 manage a `argoproj.io/v1alpha1` `Rollout`.
@@ -100,7 +102,8 @@ Autoscaler.
 - Allow creation/deletion of CPA.
 
 [Unreleased]:
-https://github.com/jthomperoo/custom-pod-autoscaler-operator/compare/v1.1.1...HEAD
+https://github.com/jthomperoo/custom-pod-autoscaler-operator/compare/v1.2.0...HEAD
+[v1.2.0]: https://github.com/jthomperoo/custom-pod-autoscaler-operator/compare/v1.1.1...v1.2.0
 [v1.1.1]: https://github.com/jthomperoo/custom-pod-autoscaler-operator/compare/v1.1.0...v1.1.1
 [v1.1.0]: https://github.com/jthomperoo/custom-pod-autoscaler-operator/compare/v1.0.3...v1.1.0
 [v1.0.3]: https://github.com/jthomperoo/custom-pod-autoscaler-operator/compare/v1.0.2...v1.0.3
