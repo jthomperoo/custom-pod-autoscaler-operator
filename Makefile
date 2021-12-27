@@ -23,7 +23,7 @@ beautify: vendor_modules
 # Run tests
 test: vendor_modules generate
 	@echo "=============Running tests============="
-	CGO_ENABLED=0 GOOS=linux go test -mod vendor ./... -cover -coverprofile unit_cover.out
+	go test -mod vendor ./... -cover -coverprofile unit_cover.out
 
 # Build the docker image
 docker: default

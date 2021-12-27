@@ -111,8 +111,40 @@ spec:
       value: "10000"
 ```
 
-This is a Custom Pod Autoscaler that is similar to the two defined above, except it provisions a role with access to the
-Kubernetes metrics server.
+This is a Custom Pod Autoscaler that is similar to the ones defined above, except it provisions a role with access to
+the Kubernetes metrics server.
 
-Take not of the option inside the CPA `roleRequiresMetricsServer: true` which informs the CPAO that the CPA requires
+Take note of the option inside the CPA `roleRequiresMetricsServer: true` which informs the CPAO that the CPA requires
 access to the metrics server, so the role that is provisioned should include these accesses.
+
+## Automatically Provisioning a Role that Supports Argo Rollouts
+
+> Note: this feature is currently unreleased.
+
+```yaml
+apiVersion: custompodautoscaler.com/v1
+kind: CustomPodAutoscaler
+metadata:
+  name: python-custom-autoscaler
+spec:
+  template:
+    spec:
+      containers:
+      - name: python-custom-autoscaler
+        image: python-custom-autoscaler:latest
+        imagePullPolicy: Always
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: hello-kubernetes
+  roleRequiresArgoRollouts: true
+  config:
+    - name: interval
+      value: "10000"
+```
+
+This is a Custom Pod Autoscaler that is similar to the ones defined above, except it provisions a role with access to
+the ability to manage [Argo Rollouts](https://argoproj.github.io/argo-rollouts/).
+
+Take not of the option inside the CPA `roleRequiresArgoRollouts: true` which informs the CPAO that the CPA requires
+the ability to manage Argo Rollouts, so the role that is provisioned should include these accesses.
