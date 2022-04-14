@@ -23,6 +23,9 @@ HELM_CHART=custom-pod-autoscaler-operator
 helm install --set mode=namespaced --namespace=${NAMESPACE}  ${HELM_CHART} https://github.com/jthomperoo/custom-pod-autoscaler-operator/releases/download/${VERSION}/custom-pod-autoscaler-operator-${VERSION}.tgz
 ```
 
+Note that for a namespaced install to function correctly, a cluster-scoped
+install must be also present (installed into the `default` namespace).
+
 ## Kubectl
 
 ### Cluster scoped install
@@ -51,3 +54,6 @@ VERSION=v1.2.0
 kubectl config set-context --current --namespace=${NAMESPACE}
 kubectl apply -f https://github.com/jthomperoo/custom-pod-autoscaler-operator/releases/download/${VERSION}/namespaced.yaml
 ```
+
+Note that for a namespaced install to function correctly, a cluster-scoped
+install must be also present (installed into the `default` namespace).
