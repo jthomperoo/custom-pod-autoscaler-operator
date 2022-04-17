@@ -34,6 +34,8 @@ import (
 	// +kubebuilder:scaffold:imports
 )
 
+const watchNamespaceEnvVar = "WATCH_NAMESPACE"
+
 var (
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
@@ -55,6 +57,8 @@ func main() {
 			"Enabling this will ensure there is only one active controller manager.")
 	flag.Parse()
 
+	namespace := os.Getenv(watchNamespaceEnvVar)
+
 	ctrl.SetLogger(zap.New(zap.UseDevMode(true)))
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
@@ -63,6 +67,7 @@ func main() {
 		Port:               9443,
 		LeaderElection:     enableLeaderElection,
 		LeaderElectionID:   "d00603b0.custompodautoscaler.com",
+		Namespace:          namespace,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
