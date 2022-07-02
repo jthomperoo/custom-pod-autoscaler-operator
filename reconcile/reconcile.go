@@ -24,14 +24,13 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-type controllerReferencer func(owner, object v1.Object, scheme *runtime.Scheme) error
+type controllerReferencer func(owner, object metav1.Object, scheme *runtime.Scheme) error
 
 // KubernetesResourceReconciler handles reconciling Kubernetes resources, such as pods, service accounts etc.
 type KubernetesResourceReconciler struct {
