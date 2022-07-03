@@ -20,15 +20,6 @@ jobs:
         version: 'v3.9.0'
       id: helm
 
-    - name: Get build dependencies
-      run: |
-        # controller-gen
-        CONTROLLER_GEN_TMP_DIR=$(mktemp -d)
-        cd $CONTROLLER_GEN_TMP_DIR
-        go mod init tmp
-        go get sigs.k8s.io/controller-tools/cmd/controller-gen@v0.9.2
-        rm -rf $CONTROLLER_GEN_TMP_DIR
-
     - name: Check out code into the Go module directory
       uses: actions/checkout@v1
 
@@ -38,7 +29,6 @@ jobs:
     - name: Lint, unit test and build
       run: |
         export PATH=$PATH:$(go env GOPATH)/bin
-        go install golang.org/x/lint/golint@v0.0.0-20201208152925-83fdc39ff7b5
 
         make vendor_modules
 
