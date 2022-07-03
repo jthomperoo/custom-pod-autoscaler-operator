@@ -191,7 +191,7 @@ func TestReconcile(t *testing.T) {
 			"No matching CPA",
 			reconcile.Result{},
 			nil,
-			fake.NewFakeClientWithScheme(func() *runtime.Scheme {
+			fake.NewClientBuilder().WithScheme(func() *runtime.Scheme {
 				s := runtime.NewScheme()
 				s.AddKnownTypes(custompodautoscalercomv1.GroupVersion, &custompodautoscalercomv1.CustomPodAutoscaler{
 					ObjectMeta: metav1.ObjectMeta{
@@ -200,7 +200,7 @@ func TestReconcile(t *testing.T) {
 					},
 				})
 				return s
-			}()),
+			}()).Build(),
 			reconcile.Request{
 				NamespacedName: types.NamespacedName{
 					Name:      "test",
@@ -232,7 +232,7 @@ func TestReconcile(t *testing.T) {
 			"Fail to reconcile service account",
 			reconcile.Result{},
 			errors.New("Error reconciling service account"),
-			fake.NewFakeClientWithScheme(func() *runtime.Scheme {
+			fake.NewClientBuilder().WithScheme(func() *runtime.Scheme {
 				s := runtime.NewScheme()
 				s.AddKnownTypes(custompodautoscalercomv1.GroupVersion, &custompodautoscalercomv1.CustomPodAutoscaler{
 					ObjectMeta: metav1.ObjectMeta{
@@ -241,14 +241,14 @@ func TestReconcile(t *testing.T) {
 					},
 				})
 				return s
-			}(),
+			}()).WithRuntimeObjects(
 				&custompodautoscalercomv1.CustomPodAutoscaler{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test",
 						Namespace: "test-namespace",
 					},
 				},
-			),
+			).Build(),
 			reconcile.Request{
 				NamespacedName: types.NamespacedName{
 					Name:      "test",
@@ -277,7 +277,7 @@ func TestReconcile(t *testing.T) {
 			"Fail to reconcile role",
 			reconcile.Result{},
 			errors.New("Error reconciling role"),
-			fake.NewFakeClientWithScheme(func() *runtime.Scheme {
+			fake.NewClientBuilder().WithScheme(func() *runtime.Scheme {
 				s := runtime.NewScheme()
 				s.AddKnownTypes(custompodautoscalercomv1.GroupVersion, &custompodautoscalercomv1.CustomPodAutoscaler{
 					ObjectMeta: metav1.ObjectMeta{
@@ -286,14 +286,14 @@ func TestReconcile(t *testing.T) {
 					},
 				})
 				return s
-			}(),
+			}()).WithRuntimeObjects(
 				&custompodautoscalercomv1.CustomPodAutoscaler{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test",
 						Namespace: "test-namespace",
 					},
 				},
-			),
+			).Build(),
 			reconcile.Request{
 				NamespacedName: types.NamespacedName{
 					Name:      "test",
@@ -322,7 +322,7 @@ func TestReconcile(t *testing.T) {
 			"Fail to reconcile role binding",
 			reconcile.Result{},
 			errors.New("Error reconciling rolebinding"),
-			fake.NewFakeClientWithScheme(func() *runtime.Scheme {
+			fake.NewClientBuilder().WithScheme(func() *runtime.Scheme {
 				s := runtime.NewScheme()
 				s.AddKnownTypes(custompodautoscalercomv1.GroupVersion, &custompodautoscalercomv1.CustomPodAutoscaler{
 					ObjectMeta: metav1.ObjectMeta{
@@ -331,14 +331,14 @@ func TestReconcile(t *testing.T) {
 					},
 				})
 				return s
-			}(),
+			}()).WithRuntimeObjects(
 				&custompodautoscalercomv1.CustomPodAutoscaler{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test",
 						Namespace: "test-namespace",
 					},
 				},
-			),
+			).Build(),
 			reconcile.Request{
 				NamespacedName: types.NamespacedName{
 					Name:      "test",
@@ -367,11 +367,11 @@ func TestReconcile(t *testing.T) {
 			"Fail to reconcile pod",
 			reconcile.Result{},
 			errors.New("Error reconciling pod"),
-			fake.NewFakeClientWithScheme(func() *runtime.Scheme {
+			fake.NewClientBuilder().WithScheme(func() *runtime.Scheme {
 				s := runtime.NewScheme()
 				s.AddKnownTypes(custompodautoscalercomv1.GroupVersion, &custompodautoscalercomv1.CustomPodAutoscaler{})
 				return s
-			}(),
+			}()).WithRuntimeObjects(
 				&custompodautoscalercomv1.CustomPodAutoscaler{
 					Spec: custompodautoscalercomv1.CustomPodAutoscalerSpec{
 						Template: corev1.PodTemplateSpec{},
@@ -381,7 +381,7 @@ func TestReconcile(t *testing.T) {
 						Namespace: "test-namespace",
 					},
 				},
-			),
+			).Build(),
 			reconcile.Request{
 				NamespacedName: types.NamespacedName{
 					Name:      "test",
@@ -410,7 +410,7 @@ func TestReconcile(t *testing.T) {
 			"Successfully reconcile with no env vars",
 			reconcile.Result{},
 			nil,
-			fake.NewFakeClientWithScheme(func() *runtime.Scheme {
+			fake.NewClientBuilder().WithScheme(func() *runtime.Scheme {
 				s := runtime.NewScheme()
 				s.AddKnownTypes(custompodautoscalercomv1.GroupVersion, &custompodautoscalercomv1.CustomPodAutoscaler{
 					ObjectMeta: metav1.ObjectMeta{
@@ -419,7 +419,7 @@ func TestReconcile(t *testing.T) {
 					},
 				})
 				return s
-			}(),
+			}()).WithRuntimeObjects(
 				&custompodautoscalercomv1.CustomPodAutoscaler{
 					Spec: custompodautoscalercomv1.CustomPodAutoscalerSpec{
 						Template: corev1.PodTemplateSpec{
@@ -437,7 +437,7 @@ func TestReconcile(t *testing.T) {
 						Namespace: "test-namespace",
 					},
 				},
-			),
+			).Build(),
 			reconcile.Request{
 				NamespacedName: types.NamespacedName{
 					Name:      "test",
@@ -483,7 +483,7 @@ func TestReconcile(t *testing.T) {
 			"Successfully reconcile with env vars",
 			reconcile.Result{},
 			nil,
-			fake.NewFakeClientWithScheme(func() *runtime.Scheme {
+			fake.NewClientBuilder().WithScheme(func() *runtime.Scheme {
 				s := runtime.NewScheme()
 				s.AddKnownTypes(custompodautoscalercomv1.GroupVersion, &custompodautoscalercomv1.CustomPodAutoscaler{
 					ObjectMeta: metav1.ObjectMeta{
@@ -492,7 +492,7 @@ func TestReconcile(t *testing.T) {
 					},
 				})
 				return s
-			}(),
+			}()).WithRuntimeObjects(
 				&custompodautoscalercomv1.CustomPodAutoscaler{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test",
@@ -524,7 +524,7 @@ func TestReconcile(t *testing.T) {
 						},
 					},
 				},
-			),
+			).Build(),
 			reconcile.Request{
 				NamespacedName: types.NamespacedName{
 					Name:      "test",
@@ -581,7 +581,7 @@ func TestReconcile(t *testing.T) {
 			"Successfully reconcile with labels set in the container",
 			reconcile.Result{},
 			nil,
-			fake.NewFakeClientWithScheme(func() *runtime.Scheme {
+			fake.NewClientBuilder().WithScheme(func() *runtime.Scheme {
 				s := runtime.NewScheme()
 				s.AddKnownTypes(custompodautoscalercomv1.GroupVersion, &custompodautoscalercomv1.CustomPodAutoscaler{
 					ObjectMeta: metav1.ObjectMeta{
@@ -590,7 +590,7 @@ func TestReconcile(t *testing.T) {
 					},
 				})
 				return s
-			}(),
+			}()).WithRuntimeObjects(
 				&custompodautoscalercomv1.CustomPodAutoscaler{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test",
@@ -613,7 +613,7 @@ func TestReconcile(t *testing.T) {
 						},
 					},
 				},
-			),
+			).Build(),
 			reconcile.Request{
 				NamespacedName: types.NamespacedName{
 					Name:      "test",
@@ -658,7 +658,7 @@ func TestReconcile(t *testing.T) {
 			"Successfully reconcile with env vars set in pod spec and no config env vars",
 			reconcile.Result{},
 			nil,
-			fake.NewFakeClientWithScheme(func() *runtime.Scheme {
+			fake.NewClientBuilder().WithScheme(func() *runtime.Scheme {
 				s := runtime.NewScheme()
 				s.AddKnownTypes(custompodautoscalercomv1.GroupVersion, &custompodautoscalercomv1.CustomPodAutoscaler{
 					ObjectMeta: metav1.ObjectMeta{
@@ -667,7 +667,7 @@ func TestReconcile(t *testing.T) {
 					},
 				})
 				return s
-			}(),
+			}()).WithRuntimeObjects(
 				&custompodautoscalercomv1.CustomPodAutoscaler{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test",
@@ -691,7 +691,7 @@ func TestReconcile(t *testing.T) {
 						},
 					},
 				},
-			),
+			).Build(),
 			reconcile.Request{
 				NamespacedName: types.NamespacedName{
 					Name:      "test",
@@ -740,7 +740,7 @@ func TestReconcile(t *testing.T) {
 			"Successfully reconcile while requesting a role with access to the metrics server",
 			reconcile.Result{},
 			nil,
-			fake.NewFakeClientWithScheme(func() *runtime.Scheme {
+			fake.NewClientBuilder().WithScheme(func() *runtime.Scheme {
 				s := runtime.NewScheme()
 				s.AddKnownTypes(custompodautoscalercomv1.GroupVersion, &custompodautoscalercomv1.CustomPodAutoscaler{
 					ObjectMeta: metav1.ObjectMeta{
@@ -749,7 +749,7 @@ func TestReconcile(t *testing.T) {
 					},
 				})
 				return s
-			}(),
+			}()).WithRuntimeObjects(
 				&custompodautoscalercomv1.CustomPodAutoscaler{
 					Spec: custompodautoscalercomv1.CustomPodAutoscalerSpec{
 						Template: corev1.PodTemplateSpec{
@@ -768,7 +768,7 @@ func TestReconcile(t *testing.T) {
 						Namespace: "test-namespace",
 					},
 				},
-			),
+			).Build(),
 			reconcile.Request{
 				NamespacedName: types.NamespacedName{
 					Name:      "test",

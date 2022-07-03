@@ -41,16 +41,14 @@ See the [usage guide](USAGE.md) to see some simple usage options. For more indep
 
 Developing this project requires these dependencies:
 
-* [Go](https://golang.org/doc/install) == `1.16`
-* [Golint](https://github.com/golang/lint) == `v0.0.0-20201208152925-83fdc39ff7b5`
-* [operator-sdk](https://github.com/operator-framework/operator-sdk) == `v1.5.0`
+* [Go](https://golang.org/doc/install) == `1.18`
 
 ### Commands
 
 * `make` - builds the operator binary.
 * `make docker` - build the docker image for the operator.
 * `make lint` - lints the codebase.
-* `make beautify` - beautifies the codebase, must be run to pass the CI.
+* `make format` - formats the codebase, must be run to pass the CI.
 * `make test` - runs the Go tests.
 * `make generate` - generates boilerplate and YAML config for the operator.
 * `make view_coverage` - opens up any generated coverage reports in the browser.

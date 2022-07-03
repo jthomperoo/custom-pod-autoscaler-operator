@@ -32,7 +32,6 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -120,7 +119,7 @@ func TestReconcile(t *testing.T) {
 			&k8sreconcile.KubernetesResourceReconciler{
 				Client: nil,
 				Scheme: &runtime.Scheme{},
-				ControllerReferencer: func(owner, object v1.Object, scheme *runtime.Scheme) error {
+				ControllerReferencer: func(owner, object metav1.Object, scheme *runtime.Scheme) error {
 					return errors.New("Fail to set controller reference")
 				},
 			},
@@ -149,7 +148,7 @@ func TestReconcile(t *testing.T) {
 					return fclient
 				}(),
 				Scheme: &runtime.Scheme{},
-				ControllerReferencer: func(owner, object v1.Object, scheme *runtime.Scheme) error {
+				ControllerReferencer: func(owner, object metav1.Object, scheme *runtime.Scheme) error {
 					return nil
 				},
 			},
@@ -182,7 +181,7 @@ func TestReconcile(t *testing.T) {
 					return fclient
 				}(),
 				Scheme: &runtime.Scheme{},
-				ControllerReferencer: func(owner, object v1.Object, scheme *runtime.Scheme) error {
+				ControllerReferencer: func(owner, object metav1.Object, scheme *runtime.Scheme) error {
 					return nil
 				},
 			},
@@ -211,7 +210,7 @@ func TestReconcile(t *testing.T) {
 					return fclient
 				}(),
 				Scheme: &runtime.Scheme{},
-				ControllerReferencer: func(owner, object v1.Object, scheme *runtime.Scheme) error {
+				ControllerReferencer: func(owner, object metav1.Object, scheme *runtime.Scheme) error {
 					return nil
 				},
 			},
@@ -244,7 +243,7 @@ func TestReconcile(t *testing.T) {
 					return fclient
 				}(),
 				Scheme: &runtime.Scheme{},
-				ControllerReferencer: func(owner, object v1.Object, scheme *runtime.Scheme) error {
+				ControllerReferencer: func(owner, object metav1.Object, scheme *runtime.Scheme) error {
 					return nil
 				},
 			},
@@ -272,7 +271,7 @@ func TestReconcile(t *testing.T) {
 					return fclient
 				}(),
 				Scheme: &runtime.Scheme{},
-				ControllerReferencer: func(owner, object v1.Object, scheme *runtime.Scheme) error {
+				ControllerReferencer: func(owner, object metav1.Object, scheme *runtime.Scheme) error {
 					return nil
 				},
 			},
@@ -282,7 +281,7 @@ func TestReconcile(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test pod",
 					Namespace: "test namespace",
-					DeletionTimestamp: &v1.Time{
+					DeletionTimestamp: &metav1.Time{
 						Time: time.Now(),
 					},
 				},
@@ -311,7 +310,7 @@ func TestReconcile(t *testing.T) {
 					return fclient
 				}(),
 				Scheme: &runtime.Scheme{},
-				ControllerReferencer: func(owner, object v1.Object, scheme *runtime.Scheme) error {
+				ControllerReferencer: func(owner, object metav1.Object, scheme *runtime.Scheme) error {
 					return nil
 				},
 			},
@@ -343,7 +342,7 @@ func TestReconcile(t *testing.T) {
 					return fclient
 				}(),
 				Scheme: &runtime.Scheme{},
-				ControllerReferencer: func(owner, object v1.Object, scheme *runtime.Scheme) error {
+				ControllerReferencer: func(owner, object metav1.Object, scheme *runtime.Scheme) error {
 					return nil
 				},
 			},
@@ -375,7 +374,7 @@ func TestReconcile(t *testing.T) {
 					return fclient
 				}(),
 				Scheme: &runtime.Scheme{},
-				ControllerReferencer: func(owner, object v1.Object, scheme *runtime.Scheme) error {
+				ControllerReferencer: func(owner, object metav1.Object, scheme *runtime.Scheme) error {
 					return nil
 				},
 			},
@@ -407,7 +406,7 @@ func TestReconcile(t *testing.T) {
 					return fclient
 				}(),
 				Scheme: &runtime.Scheme{},
-				ControllerReferencer: func(owner, object v1.Object, scheme *runtime.Scheme) error {
+				ControllerReferencer: func(owner, object metav1.Object, scheme *runtime.Scheme) error {
 					return nil
 				},
 			},
@@ -439,17 +438,17 @@ func TestReconcile(t *testing.T) {
 					return fclient
 				}(),
 				Scheme: &runtime.Scheme{},
-				ControllerReferencer: func(owner, object v1.Object, scheme *runtime.Scheme) error {
+				ControllerReferencer: func(owner, object metav1.Object, scheme *runtime.Scheme) error {
 					return nil
 				},
 			},
 			log.WithValues("Request.Namespace", "test", "Request.Name", "test"),
 			&custompodautoscalercomv1.CustomPodAutoscaler{
-				TypeMeta: v1.TypeMeta{
+				TypeMeta: metav1.TypeMeta{
 					Kind:       "custompodautoscaler",
 					APIVersion: "apiextensions.k8s.io/v1beta1",
 				},
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "testcpa",
 					UID:  "testuid",
 				},
@@ -468,7 +467,7 @@ func TestReconcile(t *testing.T) {
 			reconcile.Result{},
 			nil,
 			&k8sreconcile.KubernetesResourceReconciler{
-				Client: fake.NewFakeClientWithScheme(func() *runtime.Scheme {
+				Client: fake.NewClientBuilder().WithScheme(func() *runtime.Scheme {
 					s := runtime.NewScheme()
 					s.AddKnownTypes(schema.GroupVersion{
 						Group:   "",
@@ -480,26 +479,26 @@ func TestReconcile(t *testing.T) {
 						},
 					})
 					return s
-				}(),
+				}()).WithRuntimeObjects(
 					&corev1.Pod{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "test pod",
 							Namespace: "test namespace",
 						},
 					},
-				),
+				).Build(),
 				Scheme: &runtime.Scheme{},
-				ControllerReferencer: func(owner, object v1.Object, scheme *runtime.Scheme) error {
+				ControllerReferencer: func(owner, object metav1.Object, scheme *runtime.Scheme) error {
 					return nil
 				},
 			},
 			log.WithValues("Request.Namespace", "test", "Request.Name", "test"),
 			&custompodautoscalercomv1.CustomPodAutoscaler{
-				TypeMeta: v1.TypeMeta{
+				TypeMeta: metav1.TypeMeta{
 					Kind:       "custompodautoscaler",
 					APIVersion: "apiextensions.k8s.io/v1beta1",
 				},
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "testcpa",
 					UID:  "testuid",
 				},
@@ -518,7 +517,7 @@ func TestReconcile(t *testing.T) {
 			reconcile.Result{},
 			nil,
 			&k8sreconcile.KubernetesResourceReconciler{
-				Client: fake.NewFakeClientWithScheme(func() *runtime.Scheme {
+				Client: fake.NewClientBuilder().WithScheme(func() *runtime.Scheme {
 					s := runtime.NewScheme()
 					s.AddKnownTypes(schema.GroupVersion{
 						Group:   "",
@@ -530,26 +529,26 @@ func TestReconcile(t *testing.T) {
 						},
 					})
 					return s
-				}(),
+				}()).WithRuntimeObjects(
 					&corev1.Pod{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "test pod",
 							Namespace: "test namespace",
 						},
 					},
-				),
+				).Build(),
 				Scheme: &runtime.Scheme{},
-				ControllerReferencer: func(owner, object v1.Object, scheme *runtime.Scheme) error {
+				ControllerReferencer: func(owner, object metav1.Object, scheme *runtime.Scheme) error {
 					return nil
 				},
 			},
 			log.WithValues("Request.Namespace", "test", "Request.Name", "test"),
 			&custompodautoscalercomv1.CustomPodAutoscaler{
-				TypeMeta: v1.TypeMeta{
+				TypeMeta: metav1.TypeMeta{
 					Kind:       "custompodautoscaler",
 					APIVersion: "apiextensions.k8s.io/v1beta1",
 				},
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "testcpa",
 					UID:  "testuid",
 				},
@@ -558,7 +557,7 @@ func TestReconcile(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test pod",
 					Namespace: "test namespace",
-					OwnerReferences: []v1.OwnerReference{
+					OwnerReferences: []metav1.OwnerReference{
 						{
 							Kind:       "custompodautoscaler",
 							APIVersion: "apiextensions.k8s.io/v1beta1",
@@ -576,7 +575,7 @@ func TestReconcile(t *testing.T) {
 			reconcile.Result{},
 			nil,
 			&k8sreconcile.KubernetesResourceReconciler{
-				Client: fake.NewFakeClientWithScheme(func() *runtime.Scheme {
+				Client: fake.NewClientBuilder().WithScheme(func() *runtime.Scheme {
 					s := runtime.NewScheme()
 					s.AddKnownTypes(schema.GroupVersion{
 						Group:   "",
@@ -597,7 +596,7 @@ func TestReconcile(t *testing.T) {
 						},
 					})
 					return s
-				}(),
+				}()).WithRuntimeObjects(
 					&corev1.ServiceAccount{
 						TypeMeta: metav1.TypeMeta{
 							Kind:       "ServiceAccount",
@@ -608,19 +607,19 @@ func TestReconcile(t *testing.T) {
 							Namespace: "test namespace",
 						},
 					},
-				),
+				).Build(),
 				Scheme: &runtime.Scheme{},
-				ControllerReferencer: func(owner, object v1.Object, scheme *runtime.Scheme) error {
+				ControllerReferencer: func(owner, object metav1.Object, scheme *runtime.Scheme) error {
 					return nil
 				},
 			},
 			log.WithValues("Request.Namespace", "test", "Request.Name", "test"),
 			&custompodautoscalercomv1.CustomPodAutoscaler{
-				TypeMeta: v1.TypeMeta{
+				TypeMeta: metav1.TypeMeta{
 					Kind:       "custompodautoscaler",
 					APIVersion: "apiextensions.k8s.io/v1beta1",
 				},
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "testcpa",
 					UID:  "testuid",
 				},
@@ -633,7 +632,7 @@ func TestReconcile(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test sa",
 					Namespace: "test namespace",
-					OwnerReferences: []v1.OwnerReference{
+					OwnerReferences: []metav1.OwnerReference{
 						{
 							Kind:       "custompodautoscaler",
 							APIVersion: "apiextensions.k8s.io/v1beta1",
