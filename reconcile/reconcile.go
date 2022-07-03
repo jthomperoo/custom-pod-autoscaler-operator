@@ -18,6 +18,7 @@ package reconcile
 
 import (
 	"context"
+	"reflect"
 
 	"github.com/go-logr/logr"
 	custompodautoscalercomv1 "github.com/jthomperoo/custom-pod-autoscaler-operator/api/v1"
@@ -78,11 +79,13 @@ func (k *KubernetesResourceReconciler) Reconcile(
 		return reconcile.Result{}, nil
 	}
 
-	if existingObject.GetObjectKind().GroupVersionKind().Group == "" &&
+	isPod := existingObject.GetObjectKind().GroupVersionKind().Group == "" &&
 		existingObject.GetObjectKind().GroupVersionKind().Version == "v1" &&
-		existingObject.GetObjectKind().GroupVersionKind().Kind == "Pod" {
-		pod := existingObject.(*corev1.Pod)
-		if !pod.ObjectMeta.DeletionTimestamp.IsZero() {
+		existingObject.GetObjectKind().GroupVersionKind().Kind == "Pod"
+
+	if isPod {
+		existingPod := existingObject.(*corev1.Pod)
+		if !existingPod.ObjectMeta.DeletionTimestamp.IsZero() {
 			reqLogger.Info("Pod currently being deleted ", "Namespace", obj.GetNamespace(), "Name", obj.GetName())
 			return reconcile.Result{}, nil
 		}
@@ -109,12 +112,26 @@ func (k *KubernetesResourceReconciler) Reconcile(
 			// Successful update, don't requeue
 			return reconcile.Result{}, nil
 		}
-		reqLogger.Info("Deleting k8s object ", "Namespace", obj.GetNamespace(), "Name", obj.GetName())
 
-		// If object can't be updated, delete and make new
-		err = k.Client.Delete(context.Background(), existingObject)
-		if err != nil {
-			return reconcile.Result{}, err
+		// Only delete pod if the spec has changed, ignore status changes
+		shouldDelete := true
+		if isPod {
+			existingPod := existingObject.(*corev1.Pod)
+			updatedPod := runtimeObj.(*corev1.Pod)
+
+			if reflect.DeepEqual(existingPod.Spec, updatedPod.Spec) {
+				shouldDelete = false
+			}
+		}
+
+		if shouldDelete {
+			reqLogger.Info("Deleting k8s object ", "Namespace", obj.GetNamespace(), "Name", obj.GetName())
+
+			// If object can't be updated, delete and make new
+			err = k.Client.Delete(context.Background(), existingObject)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
 		}
 
 		return reconcile.Result{}, nil

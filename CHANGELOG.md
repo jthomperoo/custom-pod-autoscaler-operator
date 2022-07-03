@@ -6,7 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- Fixed bug that pod metadata was not preserved when creating the pod ([#87](https://github.com/jthomperoo/custom-pod-autoscaler-operator/issues/87)).
+- Fixed bug that pod metadata was not preserved when creating the pod
+([#87](https://github.com/jthomperoo/custom-pod-autoscaler-operator/issues/87)).
+- Only delete and recreate pod if there is a change to the spec, not the status of the Pod
+([#86](https://github.com/jthomperoo/custom-pod-autoscaler-operator/issues/86)).
 
 ## [v1.2.1] - 2022-04-17
 ### Fixed

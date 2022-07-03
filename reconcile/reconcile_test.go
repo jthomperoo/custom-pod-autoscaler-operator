@@ -399,7 +399,6 @@ func TestReconcile(t *testing.T) {
 					fclient.get = func(ctx context.Context, key client.ObjectKey, obj client.Object) error {
 						return nil
 					}
-					// Fail to delete
 					fclient.delete = func(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
 						return nil
 					}
@@ -446,7 +445,7 @@ func TestReconcile(t *testing.T) {
 			&custompodautoscalercomv1.CustomPodAutoscaler{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "custompodautoscaler",
-					APIVersion: "apiextensions.k8s.io/v1beta1",
+					APIVersion: "custompodautoscaler.com/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "testcpa",
@@ -496,7 +495,7 @@ func TestReconcile(t *testing.T) {
 			&custompodautoscalercomv1.CustomPodAutoscaler{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "custompodautoscaler",
-					APIVersion: "apiextensions.k8s.io/v1beta1",
+					APIVersion: "custompodautoscaler.com/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "testcpa",
@@ -534,6 +533,14 @@ func TestReconcile(t *testing.T) {
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "test pod",
 							Namespace: "test namespace",
+							OwnerReferences: []metav1.OwnerReference{
+								{
+									Kind:       "custompodautoscaler",
+									APIVersion: "custompodautoscaler.com/v1",
+									Name:       "testcpa",
+									UID:        "testuid",
+								},
+							},
 						},
 					},
 				).Build(),
@@ -546,7 +553,7 @@ func TestReconcile(t *testing.T) {
 			&custompodautoscalercomv1.CustomPodAutoscaler{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "custompodautoscaler",
-					APIVersion: "apiextensions.k8s.io/v1beta1",
+					APIVersion: "custompodautoscaler.com/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "testcpa",
@@ -560,7 +567,7 @@ func TestReconcile(t *testing.T) {
 					OwnerReferences: []metav1.OwnerReference{
 						{
 							Kind:       "custompodautoscaler",
-							APIVersion: "apiextensions.k8s.io/v1beta1",
+							APIVersion: "custompodautoscaler.com/v1",
 							Name:       "testcpa",
 							UID:        "testuid",
 						},
@@ -617,7 +624,7 @@ func TestReconcile(t *testing.T) {
 			&custompodautoscalercomv1.CustomPodAutoscaler{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "custompodautoscaler",
-					APIVersion: "apiextensions.k8s.io/v1beta1",
+					APIVersion: "custompodautoscaler.com/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "testcpa",
@@ -635,7 +642,7 @@ func TestReconcile(t *testing.T) {
 					OwnerReferences: []metav1.OwnerReference{
 						{
 							Kind:       "custompodautoscaler",
-							APIVersion: "apiextensions.k8s.io/v1beta1",
+							APIVersion: "custompodautoscaler.com/v1",
 							Name:       "testcpa",
 							UID:        "testuid",
 						},
@@ -644,6 +651,53 @@ func TestReconcile(t *testing.T) {
 			},
 			true,
 			true,
+		},
+		{
+			"Pod already exists; should be provisioned and isn't updatable, only status changed so don't delete and recreate",
+			reconcile.Result{},
+			nil,
+			&k8sreconcile.KubernetesResourceReconciler{
+				Client: func() *fakeClient {
+					fclient := &fakeClient{}
+					fclient.get = func(ctx context.Context, key client.ObjectKey, obj client.Object) error {
+						pod := obj.(*corev1.Pod)
+						pod.Status.Message = "changed"
+						return nil
+					}
+					fclient.delete = func(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
+						return errors.New("should not attempt to delete")
+					}
+					return fclient
+				}(),
+				Scheme: &runtime.Scheme{},
+				ControllerReferencer: func(owner, object metav1.Object, scheme *runtime.Scheme) error {
+					return nil
+				},
+			},
+			log.WithValues("Request.Namespace", "test", "Request.Name", "test"),
+			&custompodautoscalercomv1.CustomPodAutoscaler{},
+			&corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test sa",
+					Namespace: "test namespace",
+				},
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "Pod",
+					APIVersion: "v1",
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name: "test container",
+						},
+					},
+				},
+				Status: corev1.PodStatus{
+					Message: "original",
+				},
+			},
+			true,
+			false,
 		},
 	}
 	for _, test := range tests {
