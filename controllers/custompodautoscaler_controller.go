@@ -271,8 +271,8 @@ func (r *CustomPodAutoscalerReconciler) Reconcile(context context.Context, req c
 
 	// Define Pod object with ObjectMeta and modified PodSpec
 	pod := &corev1.Pod{
-		ObjectMeta: objectMeta,
-		Spec:       podSpec,
+		ObjectMeta: metav1.ObjectMeta(objectMeta),
+		Spec:       corev1.PodSpec(podSpec),
 	}
 	result, err = r.KubernetesResourceReconciler.Reconcile(reqLogger, instance, pod, *instance.Spec.ProvisionPod, false)
 	if err != nil {

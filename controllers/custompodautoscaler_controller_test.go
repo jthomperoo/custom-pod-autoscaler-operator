@@ -374,7 +374,7 @@ func TestReconcile(t *testing.T) {
 			}()).WithRuntimeObjects(
 				&custompodautoscalercomv1.CustomPodAutoscaler{
 					Spec: custompodautoscalercomv1.CustomPodAutoscalerSpec{
-						Template: corev1.PodTemplateSpec{},
+						Template: custompodautoscalercomv1.PodTemplateSpec{},
 					},
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "test",
@@ -422,8 +422,8 @@ func TestReconcile(t *testing.T) {
 			}()).WithRuntimeObjects(
 				&custompodautoscalercomv1.CustomPodAutoscaler{
 					Spec: custompodautoscalercomv1.CustomPodAutoscalerSpec{
-						Template: corev1.PodTemplateSpec{
-							Spec: corev1.PodSpec{
+						Template: custompodautoscalercomv1.PodTemplateSpec{
+							Spec: custompodautoscalercomv1.PodSpec{
 								Containers: []corev1.Container{
 									{
 										Name: "test container",
@@ -499,8 +499,8 @@ func TestReconcile(t *testing.T) {
 						Namespace: "test-namespace",
 					},
 					Spec: custompodautoscalercomv1.CustomPodAutoscalerSpec{
-						Template: corev1.PodTemplateSpec{
-							Spec: corev1.PodSpec{
+						Template: custompodautoscalercomv1.PodTemplateSpec{
+							Spec: custompodautoscalercomv1.PodSpec{
 								Containers: []corev1.Container{
 									{
 										Name: "test container",
@@ -597,15 +597,15 @@ func TestReconcile(t *testing.T) {
 						Namespace: "test-namespace",
 					},
 					Spec: custompodautoscalercomv1.CustomPodAutoscalerSpec{
-						Template: corev1.PodTemplateSpec{
-							Spec: corev1.PodSpec{
+						Template: custompodautoscalercomv1.PodTemplateSpec{
+							Spec: custompodautoscalercomv1.PodSpec{
 								Containers: []corev1.Container{
 									{
 										Name: "test container",
 									},
 								},
 							},
-							ObjectMeta: metav1.ObjectMeta{
+							ObjectMeta: custompodautoscalercomv1.PodMeta{
 								Labels: map[string]string{
 									"test-label": "test",
 								},
@@ -674,8 +674,8 @@ func TestReconcile(t *testing.T) {
 						Namespace: "test-namespace",
 					},
 					Spec: custompodautoscalercomv1.CustomPodAutoscalerSpec{
-						Template: corev1.PodTemplateSpec{
-							Spec: corev1.PodSpec{
+						Template: custompodautoscalercomv1.PodTemplateSpec{
+							Spec: custompodautoscalercomv1.PodSpec{
 								Containers: []corev1.Container{
 									{
 										Name: "test container",
@@ -752,8 +752,8 @@ func TestReconcile(t *testing.T) {
 			}()).WithRuntimeObjects(
 				&custompodautoscalercomv1.CustomPodAutoscaler{
 					Spec: custompodautoscalercomv1.CustomPodAutoscalerSpec{
-						Template: corev1.PodTemplateSpec{
-							Spec: corev1.PodSpec{
+						Template: custompodautoscalercomv1.PodTemplateSpec{
+							Spec: custompodautoscalercomv1.PodSpec{
 								Containers: []corev1.Container{
 									{
 										Name: "test container",

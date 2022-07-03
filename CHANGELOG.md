@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Fixed bug that pod metadata was not preserved when creating the pod ([#87](https://github.com/jthomperoo/custom-pod-autoscaler-operator/issues/87)).
+
 ## [v1.2.1] - 2022-04-17
 ### Fixed
 - Fixed issue with namespaced deploys not working due to invalid permissions when watching resources in a namespace.
