@@ -35,7 +35,7 @@ type CustomPodAutoscalerConfig struct {
 // CustomPodAutoscalerSpec defines the desired state of CustomPodAutoscaler
 type CustomPodAutoscalerSpec struct {
 	// The image of the Custom Pod Autoscaler
-	Template corev1.PodTemplateSpec `json:"template"`
+	Template PodTemplateSpec `json:"template"`
 	// ScaleTargetRef defining what the Custom Pod Autoscaler should manage
 	ScaleTargetRef autoscaling.CrossVersionObjectReference `json:"scaleTargetRef"`
 	// Configuration options to be delivered as environment variables to the container
@@ -73,6 +73,23 @@ type CustomPodAutoscalerList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []CustomPodAutoscaler `json:"items"`
 }
+
+type PodTemplateSpec struct {
+	// Standard object's metadata.
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#metadata
+	// +optional
+	ObjectMeta PodMeta `json:"metadata,omitempty" protobuf:"bytes,1,opt,name=metadata"`
+
+	// Specification of the desired behavior of the pod.
+	// More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#spec-and-status
+	// +optional
+	Spec PodSpec `json:"spec,omitempty" protobuf:"bytes,2,opt,name=spec"`
+}
+
+// +kubebuilder:pruning:PreserveUnknownFields
+type PodMeta metav1.ObjectMeta
+
+type PodSpec corev1.PodSpec
 
 func init() {
 	SchemeBuilder.Register(&CustomPodAutoscaler{}, &CustomPodAutoscalerList{})
