@@ -3,13 +3,6 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/jthomperoo/custom-pod-autoscaler-operator)](https://goreportcard.com/report/github.com/jthomperoo/custom-pod-autoscaler-operator)
 [![License](https://img.shields.io/:license-apache-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0.html)
 
-<p>This project is supported by:</p>
-<p>
-  <a href="https://www.digitalocean.com/">
-    <img src="https://opensource.nyc3.cdn.digitaloceanspaces.com/attribution/assets/SVG/DO_Logo_horizontal_blue.svg" width="201px">
-  </a>
-</p>
-
 # Custom Pod Autoscaler Operator
 
 This is the operator for managing [Custom Pod Autoscalers](https://github.com/jthomperoo/custom-pod-autoscaler) (CPA).
@@ -25,7 +18,7 @@ installation using kubectl.
 
 Run this to install the Operator and Custom Pod Autoscaler definition with cluster-wide scope on your cluster:
 ```
-VERSION=v1.2.1
+VERSION=v1.3.0
 HELM_CHART=custom-pod-autoscaler-operator
 helm install ${HELM_CHART} https://github.com/jthomperoo/custom-pod-autoscaler-operator/releases/download/${VERSION}/custom-pod-autoscaler-operator-${VERSION}.tgz
 ```
@@ -37,13 +30,14 @@ See the [usage guide](USAGE.md) to see some simple usage options. For more indep
 
 ## Developing
 
-### Environment
-
 Developing this project requires these dependencies:
 
 * [Go](https://golang.org/doc/install) == `1.18`
 
-### Commands
+See the [contributing guide](CONTRIBUTING.md) for more information about how you can develop and contribute to this
+project.
+
+## Commands
 
 * `make` - builds the operator binary.
 * `make docker` - build the docker image for the operator.
