@@ -446,7 +446,7 @@ func TestReconcile(t *testing.T) {
 			&custompodautoscalercomv1.CustomPodAutoscaler{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "custompodautoscaler",
-					APIVersion: "apiextensions.k8s.io/v1beta1",
+					APIVersion: "custompodautoscaler.com/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "testcpa",
@@ -472,12 +472,7 @@ func TestReconcile(t *testing.T) {
 					s.AddKnownTypes(schema.GroupVersion{
 						Group:   "",
 						Version: "v1",
-					}, &corev1.Pod{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "test pod",
-							Namespace: "test namespace",
-						},
-					})
+					}, &corev1.Pod{})
 					return s
 				}()).WithRuntimeObjects(
 					&corev1.Pod{
@@ -496,7 +491,7 @@ func TestReconcile(t *testing.T) {
 			&custompodautoscalercomv1.CustomPodAutoscaler{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "custompodautoscaler",
-					APIVersion: "apiextensions.k8s.io/v1beta1",
+					APIVersion: "custompodautoscaler.com/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "testcpa",
@@ -522,18 +517,21 @@ func TestReconcile(t *testing.T) {
 					s.AddKnownTypes(schema.GroupVersion{
 						Group:   "",
 						Version: "v1",
-					}, &corev1.Pod{
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "test pod",
-							Namespace: "test namespace",
-						},
-					})
+					}, &corev1.Pod{})
 					return s
 				}()).WithRuntimeObjects(
 					&corev1.Pod{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "test pod",
 							Namespace: "test namespace",
+							OwnerReferences: []metav1.OwnerReference{
+								{
+									Kind:       "custompodautoscaler",
+									APIVersion: "custompodautoscaler.com/v1",
+									Name:       "testcpa",
+									UID:        "testuid",
+								},
+							},
 						},
 					},
 				).Build(),
@@ -546,7 +544,7 @@ func TestReconcile(t *testing.T) {
 			&custompodautoscalercomv1.CustomPodAutoscaler{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "custompodautoscaler",
-					APIVersion: "apiextensions.k8s.io/v1beta1",
+					APIVersion: "custompodautoscaler.com/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "testcpa",
@@ -560,7 +558,7 @@ func TestReconcile(t *testing.T) {
 					OwnerReferences: []metav1.OwnerReference{
 						{
 							Kind:       "custompodautoscaler",
-							APIVersion: "apiextensions.k8s.io/v1beta1",
+							APIVersion: "custompodautoscaler.com/v1",
 							Name:       "testcpa",
 							UID:        "testuid",
 						},
@@ -580,21 +578,7 @@ func TestReconcile(t *testing.T) {
 					s.AddKnownTypes(schema.GroupVersion{
 						Group:   "",
 						Version: "v1",
-					}, &corev1.ServiceAccount{
-						TypeMeta: metav1.TypeMeta{
-							Kind:       "ServiceAccount",
-							APIVersion: "v1",
-						},
-						ObjectMeta: metav1.ObjectMeta{
-							Name:      "test sa",
-							Namespace: "test namespace",
-						},
-						Secrets: []corev1.ObjectReference{
-							{
-								Name: "test secret",
-							},
-						},
-					})
+					}, &corev1.ServiceAccount{})
 					return s
 				}()).WithRuntimeObjects(
 					&corev1.ServiceAccount{
@@ -617,7 +601,7 @@ func TestReconcile(t *testing.T) {
 			&custompodautoscalercomv1.CustomPodAutoscaler{
 				TypeMeta: metav1.TypeMeta{
 					Kind:       "custompodautoscaler",
-					APIVersion: "apiextensions.k8s.io/v1beta1",
+					APIVersion: "custompodautoscaler.com/v1",
 				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "testcpa",
@@ -635,7 +619,7 @@ func TestReconcile(t *testing.T) {
 					OwnerReferences: []metav1.OwnerReference{
 						{
 							Kind:       "custompodautoscaler",
-							APIVersion: "apiextensions.k8s.io/v1beta1",
+							APIVersion: "custompodautoscaler.com/v1",
 							Name:       "testcpa",
 							UID:        "testuid",
 						},
@@ -656,6 +640,559 @@ func TestReconcile(t *testing.T) {
 
 			if !cmp.Equal(result, test.expected) {
 				t.Errorf("result mismatch (-want +got):\n%s", cmp.Diff(result, test.expected))
+			}
+		})
+	}
+}
+
+func TestPodCleanup(t *testing.T) {
+	equateErrorMessage := cmp.Comparer(func(x, y error) bool {
+		if x == nil || y == nil {
+			return x == nil && y == nil
+		}
+		return x.Error() == y.Error()
+	})
+
+	var tests = []struct {
+		description string
+		expectedErr error
+		reconciler  *k8sreconcile.KubernetesResourceReconciler
+		logger      logr.Logger
+		instance    *custompodautoscalercomv1.CustomPodAutoscaler
+	}{
+		{
+			description: "Fail to list pods",
+			expectedErr: errors.New("fail to list pods"),
+			reconciler: &k8sreconcile.KubernetesResourceReconciler{
+				Client: func() *fakeClient {
+					fclient := &fakeClient{}
+					// Client fails to get object
+					fclient.list = func(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
+						return errors.New("fail to list pods")
+					}
+					return fclient
+				}(),
+				Scheme: &runtime.Scheme{},
+				ControllerReferencer: func(owner, object metav1.Object, scheme *runtime.Scheme) error {
+					return nil
+				},
+			},
+			logger: log.WithValues("Request.Namespace", "test", "Request.Name", "test"),
+			instance: &custompodautoscalercomv1.CustomPodAutoscaler{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "custompodautoscaler",
+					APIVersion: "custompodautoscaler.com/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "testcpa",
+					UID:  "testuid",
+				},
+			},
+		},
+		{
+			description: "No pods found",
+			expectedErr: nil,
+			reconciler: &k8sreconcile.KubernetesResourceReconciler{
+				Client: fake.NewClientBuilder().WithScheme(func() *runtime.Scheme {
+					s := runtime.NewScheme()
+					s.AddKnownTypes(schema.GroupVersion{
+						Group:   "",
+						Version: "v1",
+					}, &corev1.PodList{})
+					return s
+				}()).Build(),
+				Scheme: &runtime.Scheme{},
+				ControllerReferencer: func(owner, object metav1.Object, scheme *runtime.Scheme) error {
+					return nil
+				},
+			},
+			logger: log.WithValues("Request.Namespace", "test", "Request.Name", "test"),
+			instance: &custompodautoscalercomv1.CustomPodAutoscaler{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "custompodautoscaler",
+					APIVersion: "custompodautoscaler.com/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "testcpa",
+					UID:  "testuid",
+				},
+			},
+		},
+		{
+			description: "Three pods, one owned by a different CPA, two not matching label",
+			expectedErr: nil,
+			reconciler: &k8sreconcile.KubernetesResourceReconciler{
+				Client: fake.NewClientBuilder().WithScheme(func() *runtime.Scheme {
+					s := runtime.NewScheme()
+					s.AddKnownTypes(schema.GroupVersion{
+						Group:   "",
+						Version: "v1",
+					}, &corev1.PodList{}, &corev1.Pod{})
+					return s
+				}()).WithRuntimeObjects(&corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "pod-1",
+						Labels: map[string]string{
+							"v1.custompodautoscaler.com/owned-by": "othercpa",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								Kind:       "custompodautoscaler",
+								APIVersion: "custompodautoscaler.com/v1",
+								Name:       "testcpa",
+							},
+						},
+					},
+				},
+					&corev1.Pod{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "pod2",
+						},
+					},
+					&corev1.Pod{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "pod-3",
+						},
+					}).Build(),
+				Scheme: &runtime.Scheme{},
+				ControllerReferencer: func(owner, object metav1.Object, scheme *runtime.Scheme) error {
+					return nil
+				},
+			},
+			logger: log.WithValues("Request.Namespace", "test", "Request.Name", "test"),
+			instance: &custompodautoscalercomv1.CustomPodAutoscaler{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "custompodautoscaler",
+					APIVersion: "custompodautoscaler.com/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "testcpa",
+					UID:  "testuid",
+				},
+			},
+		},
+		{
+			description: "One pod found, not managed by this CPA",
+			expectedErr: nil,
+			reconciler: &k8sreconcile.KubernetesResourceReconciler{
+				Client: fake.NewClientBuilder().WithScheme(func() *runtime.Scheme {
+					s := runtime.NewScheme()
+					s.AddKnownTypes(schema.GroupVersion{
+						Group:   "",
+						Version: "v1",
+					}, &corev1.PodList{}, &corev1.Pod{})
+					return s
+				}()).WithRuntimeObjects(
+					&corev1.Pod{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "othercpa",
+							Labels: map[string]string{
+								"v1.custompodautoscaler.com/owned-by": "testcpa",
+							},
+							OwnerReferences: []metav1.OwnerReference{
+								{
+									Kind:       "custompodautoscaler",
+									APIVersion: "custompodautoscaler.com/v1",
+									Name:       "othercpa",
+								},
+							},
+						},
+					},
+				).Build(),
+				Scheme: &runtime.Scheme{},
+				ControllerReferencer: func(owner, object metav1.Object, scheme *runtime.Scheme) error {
+					return nil
+				},
+			},
+			logger: log.WithValues("Request.Namespace", "test", "Request.Name", "test"),
+			instance: &custompodautoscalercomv1.CustomPodAutoscaler{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "custompodautoscaler",
+					APIVersion: "custompodautoscaler.com/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "testcpa",
+					UID:  "testuid",
+				},
+			},
+		},
+		{
+			description: "One pod found, managed by CPA, using instance name, name matches",
+			expectedErr: nil,
+			reconciler: &k8sreconcile.KubernetesResourceReconciler{
+				Client: fake.NewClientBuilder().WithScheme(func() *runtime.Scheme {
+					s := runtime.NewScheme()
+					s.AddKnownTypes(schema.GroupVersion{
+						Group:   "",
+						Version: "v1",
+					}, &corev1.PodList{}, &corev1.Pod{})
+					return s
+				}()).WithRuntimeObjects(
+					&corev1.Pod{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "testcpa",
+							Labels: map[string]string{
+								"v1.custompodautoscaler.com/owned-by": "testcpa",
+							},
+							OwnerReferences: []metav1.OwnerReference{
+								{
+									Kind:       "custompodautoscaler",
+									APIVersion: "custompodautoscaler.com/v1",
+									Name:       "testcpa",
+								},
+							},
+						},
+					},
+				).Build(),
+				Scheme: &runtime.Scheme{},
+				ControllerReferencer: func(owner, object metav1.Object, scheme *runtime.Scheme) error {
+					return nil
+				},
+			},
+			logger: log.WithValues("Request.Namespace", "test", "Request.Name", "test"),
+			instance: &custompodautoscalercomv1.CustomPodAutoscaler{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "custompodautoscaler",
+					APIVersion: "custompodautoscaler.com/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "testcpa",
+					UID:  "testuid",
+				},
+			},
+		},
+		{
+			description: "One pod found, managed by CPA, using instance name, name doesn't match, delete fail",
+			expectedErr: errors.New("fail to delete"),
+			reconciler: &k8sreconcile.KubernetesResourceReconciler{
+				Client: func() *fakeClient {
+					fclient := &fakeClient{}
+					fclient.list = func(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
+						pods := list.(*corev1.PodList)
+						pods.Items = []corev1.Pod{
+							{
+								ObjectMeta: metav1.ObjectMeta{
+									Name: "testcpa-mismatch",
+									Labels: map[string]string{
+										"v1.custompodautoscaler.com/owned-by": "testcpa",
+									},
+									OwnerReferences: []metav1.OwnerReference{
+										{
+											Kind:       "custompodautoscaler",
+											APIVersion: "custompodautoscaler.com/v1",
+											Name:       "testcpa",
+										},
+									},
+								},
+							},
+						}
+						return nil
+					}
+
+					fclient.delete = func(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
+						return errors.New("fail to delete")
+					}
+					return fclient
+				}(),
+				Scheme: &runtime.Scheme{},
+				ControllerReferencer: func(owner, object metav1.Object, scheme *runtime.Scheme) error {
+					return nil
+				},
+			},
+			logger: log.WithValues("Request.Namespace", "test", "Request.Name", "test"),
+			instance: &custompodautoscalercomv1.CustomPodAutoscaler{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "custompodautoscaler",
+					APIVersion: "custompodautoscaler.com/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "testcpa",
+					UID:  "testuid",
+				},
+			},
+		},
+		{
+			description: "One pod found, managed by CPA, using instance name, name doesn't match, delete",
+			expectedErr: nil,
+			reconciler: &k8sreconcile.KubernetesResourceReconciler{
+				Client: fake.NewClientBuilder().WithScheme(func() *runtime.Scheme {
+					s := runtime.NewScheme()
+					s.AddKnownTypes(schema.GroupVersion{
+						Group:   "",
+						Version: "v1",
+					}, &corev1.PodList{}, &corev1.Pod{})
+					return s
+				}()).WithRuntimeObjects(
+					&corev1.Pod{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "testcpa-mismatch",
+							Labels: map[string]string{
+								"v1.custompodautoscaler.com/owned-by": "testcpa",
+							},
+							OwnerReferences: []metav1.OwnerReference{
+								{
+									Kind:       "custompodautoscaler",
+									APIVersion: "custompodautoscaler.com/v1",
+									Name:       "testcpa",
+								},
+							},
+						},
+					}).Build(),
+				Scheme: &runtime.Scheme{},
+				ControllerReferencer: func(owner, object metav1.Object, scheme *runtime.Scheme) error {
+					return nil
+				},
+			},
+			logger: log.WithValues("Request.Namespace", "test", "Request.Name", "test"),
+			instance: &custompodautoscalercomv1.CustomPodAutoscaler{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "custompodautoscaler",
+					APIVersion: "custompodautoscaler.com/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "testcpa",
+					UID:  "testuid",
+				},
+			},
+		},
+		{
+			description: "One pod found, managed by CPA, not using instance name, name matches",
+			expectedErr: nil,
+			reconciler: &k8sreconcile.KubernetesResourceReconciler{
+				Client: fake.NewClientBuilder().WithScheme(func() *runtime.Scheme {
+					s := runtime.NewScheme()
+					s.AddKnownTypes(schema.GroupVersion{
+						Group:   "",
+						Version: "v1",
+					}, &corev1.PodList{}, &corev1.Pod{})
+					return s
+				}()).WithRuntimeObjects(&corev1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "testcpa-custom",
+						Labels: map[string]string{
+							"v1.custompodautoscaler.com/owned-by": "testcpa",
+						},
+						OwnerReferences: []metav1.OwnerReference{
+							{
+								Kind:       "custompodautoscaler",
+								APIVersion: "custompodautoscaler.com/v1",
+								Name:       "testcpa",
+							},
+						},
+					},
+				},
+				).Build(),
+				Scheme: &runtime.Scheme{},
+				ControllerReferencer: func(owner, object metav1.Object, scheme *runtime.Scheme) error {
+					return nil
+				},
+			},
+			logger: log.WithValues("Request.Namespace", "test", "Request.Name", "test"),
+			instance: &custompodautoscalercomv1.CustomPodAutoscaler{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "custompodautoscaler",
+					APIVersion: "custompodautoscaler.com/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "testcpa",
+					UID:  "testuid",
+				},
+				Spec: custompodautoscalercomv1.CustomPodAutoscalerSpec{
+					Template: custompodautoscalercomv1.PodTemplateSpec{
+						ObjectMeta: custompodautoscalercomv1.PodMeta{
+							Name: "testcpa-custom",
+						},
+					},
+				},
+			},
+		},
+		{
+			description: "One pod found, managed by CPA, not using instance name, name doesn't match, delete fail",
+			expectedErr: errors.New("fail to delete"),
+			reconciler: &k8sreconcile.KubernetesResourceReconciler{
+				Client: func() *fakeClient {
+					fclient := &fakeClient{}
+					fclient.list = func(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
+						pods := list.(*corev1.PodList)
+						pods.Items = []corev1.Pod{
+							{
+								ObjectMeta: metav1.ObjectMeta{
+									Name: "testcpa-template-mismatch",
+									Labels: map[string]string{
+										"v1.custompodautoscaler.com/owned-by": "testcpa",
+									},
+									OwnerReferences: []metav1.OwnerReference{
+										{
+											Kind:       "custompodautoscaler",
+											APIVersion: "custompodautoscaler.com/v1",
+											Name:       "testcpa",
+										},
+									},
+								},
+							},
+						}
+						return nil
+					}
+
+					fclient.delete = func(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
+						return errors.New("fail to delete")
+					}
+					return fclient
+				}(),
+				Scheme: &runtime.Scheme{},
+				ControllerReferencer: func(owner, object metav1.Object, scheme *runtime.Scheme) error {
+					return nil
+				},
+			},
+			logger: log.WithValues("Request.Namespace", "test", "Request.Name", "test"),
+			instance: &custompodautoscalercomv1.CustomPodAutoscaler{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "custompodautoscaler",
+					APIVersion: "custompodautoscaler.com/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "testcpa",
+					UID:  "testuid",
+				},
+				Spec: custompodautoscalercomv1.CustomPodAutoscalerSpec{
+					Template: custompodautoscalercomv1.PodTemplateSpec{
+						ObjectMeta: custompodautoscalercomv1.PodMeta{
+							Name: "testcpa-template",
+						},
+					},
+				},
+			},
+		},
+		{
+			description: "One pod found, managed by CPA, not using instance name, name doesn't match, delete",
+			expectedErr: nil,
+			reconciler: &k8sreconcile.KubernetesResourceReconciler{
+				Client: fake.NewClientBuilder().WithScheme(func() *runtime.Scheme {
+					s := runtime.NewScheme()
+					s.AddKnownTypes(schema.GroupVersion{
+						Group:   "",
+						Version: "v1",
+					}, &corev1.PodList{}, &corev1.Pod{})
+					return s
+				}()).WithRuntimeObjects(
+					&corev1.Pod{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "testcpa-template-mismatch",
+							Labels: map[string]string{
+								"v1.custompodautoscaler.com/owned-by": "testcpa",
+							},
+							OwnerReferences: []metav1.OwnerReference{
+								{
+									Kind:       "custompodautoscaler",
+									APIVersion: "custompodautoscaler.com/v1",
+									Name:       "testcpa",
+								},
+							},
+						},
+					}).Build(),
+				Scheme: &runtime.Scheme{},
+				ControllerReferencer: func(owner, object metav1.Object, scheme *runtime.Scheme) error {
+					return nil
+				},
+			},
+			logger: log.WithValues("Request.Namespace", "test", "Request.Name", "test"),
+			instance: &custompodautoscalercomv1.CustomPodAutoscaler{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "custompodautoscaler",
+					APIVersion: "custompodautoscaler.com/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "testcpa",
+					UID:  "testuid",
+				},
+				Spec: custompodautoscalercomv1.CustomPodAutoscalerSpec{
+					Template: custompodautoscalercomv1.PodTemplateSpec{
+						ObjectMeta: custompodautoscalercomv1.PodMeta{
+							Name: "testcpa-template",
+						},
+					},
+				},
+			},
+		},
+		{
+			description: "Three pods found, one managed by CPA, not using instance name, name doesn't match, delete",
+			expectedErr: nil,
+			reconciler: &k8sreconcile.KubernetesResourceReconciler{
+				Client: fake.NewClientBuilder().WithScheme(func() *runtime.Scheme {
+					s := runtime.NewScheme()
+					s.AddKnownTypes(schema.GroupVersion{
+						Group:   "",
+						Version: "v1",
+					}, &corev1.PodList{}, &corev1.Pod{})
+					return s
+				}()).WithRuntimeObjects(
+					&corev1.Pod{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "testcpa-template-mismatch",
+							Labels: map[string]string{
+								"v1.custompodautoscaler.com/owned-by": "testcpa",
+							},
+							OwnerReferences: []metav1.OwnerReference{
+								{
+									Kind:       "custompodautoscaler",
+									APIVersion: "custompodautoscaler.com/v1",
+									Name:       "testcpa",
+								},
+							},
+						},
+					},
+					&corev1.Pod{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "othercpa",
+							Labels: map[string]string{
+								"v1.custompodautoscaler.com/owned-by": "othercpa",
+							},
+							OwnerReferences: []metav1.OwnerReference{
+								{
+									Kind:       "custompodautoscaler",
+									APIVersion: "custompodautoscaler.com/v1",
+									Name:       "othercpa",
+								},
+							},
+						},
+					},
+					&corev1.Pod{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "different-pod",
+						},
+					},
+				).Build(),
+				Scheme: &runtime.Scheme{},
+				ControllerReferencer: func(owner, object metav1.Object, scheme *runtime.Scheme) error {
+					return nil
+				},
+			},
+			logger: log.WithValues("Request.Namespace", "test", "Request.Name", "test"),
+			instance: &custompodautoscalercomv1.CustomPodAutoscaler{
+				TypeMeta: metav1.TypeMeta{
+					Kind:       "custompodautoscaler",
+					APIVersion: "custompodautoscaler.com/v1",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "testcpa",
+					UID:  "testuid",
+				},
+				Spec: custompodautoscalercomv1.CustomPodAutoscalerSpec{
+					Template: custompodautoscalercomv1.PodTemplateSpec{
+						ObjectMeta: custompodautoscalercomv1.PodMeta{
+							Name: "testcpa-template",
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.description, func(t *testing.T) {
+			err := test.reconciler.PodCleanup(test.logger, test.instance)
+			if !cmp.Equal(err, test.expectedErr, equateErrorMessage) {
+				t.Errorf("error mismatch (-want +got):\n%s", cmp.Diff(test.expectedErr, err, equateErrorMessage))
+				return
 			}
 		})
 	}

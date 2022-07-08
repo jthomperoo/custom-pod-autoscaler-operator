@@ -37,7 +37,12 @@ import (
 	rbacv1 "k8s.io/api/rbac/v1"
 )
 
-type k8sReconciler interface {
+const (
+	managedByLabel = "app.kubernetes.io/managed-by"
+	OwnedByLabel   = "v1.custompodautoscaler.com/owned-by"
+)
+
+type K8sReconciler interface {
 	Reconcile(
 		reqLogger logr.Logger,
 		instance *custompodautoscalercomv1.CustomPodAutoscaler,
@@ -45,6 +50,7 @@ type k8sReconciler interface {
 		shouldProvision bool,
 		updateable bool,
 	) (reconcile.Result, error)
+	PodCleanup(reqLogger logr.Logger, instance *custompodautoscalercomv1.CustomPodAutoscaler) error
 }
 
 // CustomPodAutoscalerReconciler reconciles a CustomPodAutoscaler object.
@@ -52,7 +58,7 @@ type CustomPodAutoscalerReconciler struct {
 	client.Client
 	Log                          logr.Logger
 	Scheme                       *runtime.Scheme
-	KubernetesResourceReconciler k8sReconciler
+	KubernetesResourceReconciler K8sReconciler
 }
 
 // PrimaryPred is the predicate that filters events for the CustomPodAutoscaler primary resource.
@@ -142,7 +148,8 @@ func (r *CustomPodAutoscalerReconciler) Reconcile(context context.Context, req c
 	}
 
 	labels := map[string]string{
-		"app.kubernetes.io/managed-by": "custom-pod-autoscaler-operator",
+		managedByLabel: "custom-pod-autoscaler-operator",
+		OwnedByLabel:   instance.Name,
 	}
 
 	// Define a new Service Account object
@@ -233,7 +240,8 @@ func (r *CustomPodAutoscalerReconciler) Reconcile(context context.Context, req c
 	} else {
 		podLabels = instance.Spec.Template.ObjectMeta.Labels
 	}
-	podLabels["app.kubernetes.io/managed-by"] = "custom-pod-autoscaler-operator"
+	podLabels[managedByLabel] = "custom-pod-autoscaler-operator"
+	podLabels[OwnedByLabel] = instance.Name
 
 	// Set up ObjectMeta, if no name or namespaces are provided in the template PodSpec then
 	// the CPA name and namespace are used
@@ -275,6 +283,12 @@ func (r *CustomPodAutoscalerReconciler) Reconcile(context context.Context, req c
 		Spec:       corev1.PodSpec(podSpec),
 	}
 	result, err = r.KubernetesResourceReconciler.Reconcile(reqLogger, instance, pod, *instance.Spec.ProvisionPod, false)
+	if err != nil {
+		return result, err
+	}
+
+	// Clean up any orphaned pods (e.g. renaming pod, old pod should be deleted)
+	err = r.KubernetesResourceReconciler.PodCleanup(reqLogger, instance)
 	if err != nil {
 		return result, err
 	}

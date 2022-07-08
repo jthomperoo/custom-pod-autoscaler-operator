@@ -88,16 +88,6 @@ func TestSecondaryPredicate(t *testing.T) {
 	}
 }
 
-type k8sReconciler interface {
-	Reconcile(
-		reqLogger logr.Logger,
-		instance *custompodautoscalercomv1.CustomPodAutoscaler,
-		obj metav1.Object,
-		shouldProvision bool,
-		updatable bool,
-	) (reconcile.Result, error)
-}
-
 type fakek8sReconciler struct {
 	reconcile func(
 		reqLogger logr.Logger,
@@ -106,6 +96,8 @@ type fakek8sReconciler struct {
 		shouldProvision bool,
 		updatable bool,
 	) (reconcile.Result, error)
+
+	podCleanup func(reqLogger logr.Logger, instance *custompodautoscalercomv1.CustomPodAutoscaler) error
 }
 
 func (f *fakek8sReconciler) Reconcile(
@@ -116,6 +108,10 @@ func (f *fakek8sReconciler) Reconcile(
 	updatable bool,
 ) (reconcile.Result, error) {
 	return f.reconcile(reqLogger, instance, obj, shouldProvision, updatable)
+}
+
+func (f *fakek8sReconciler) PodCleanup(reqLogger logr.Logger, instance *custompodautoscalercomv1.CustomPodAutoscaler) error {
+	return f.podCleanup(reqLogger, instance)
 }
 
 type fakeClient struct {
@@ -185,7 +181,7 @@ func TestReconcile(t *testing.T) {
 		expectedErr   error
 		client        client.Client
 		request       reconcile.Request
-		k8sreconciler k8sReconciler
+		k8sreconciler controllers.K8sReconciler
 	}{
 		{
 			"No matching CPA",
@@ -407,6 +403,82 @@ func TestReconcile(t *testing.T) {
 			}(),
 		},
 		{
+			"Fail to clean up orphaned pods",
+			reconcile.Result{},
+			errors.New("Error cleaning up pods"),
+			fake.NewClientBuilder().WithScheme(func() *runtime.Scheme {
+				s := runtime.NewScheme()
+				s.AddKnownTypes(custompodautoscalercomv1.GroupVersion, &custompodautoscalercomv1.CustomPodAutoscaler{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "test-namespace",
+					},
+				})
+				return s
+			}()).WithRuntimeObjects(
+				&custompodautoscalercomv1.CustomPodAutoscaler{
+					Spec: custompodautoscalercomv1.CustomPodAutoscalerSpec{
+						Template: custompodautoscalercomv1.PodTemplateSpec{
+							Spec: custompodautoscalercomv1.PodSpec{
+								Containers: []corev1.Container{
+									{
+										Name: "test container",
+									},
+								},
+							},
+						},
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "test-namespace",
+					},
+				},
+			).Build(),
+			reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      "test",
+					Namespace: "test-namespace",
+				},
+			},
+			func() *fakek8sReconciler {
+				reconciler := &fakek8sReconciler{}
+				reconciler.reconcile = func(
+					reqLogger logr.Logger,
+					instance *custompodautoscalercomv1.CustomPodAutoscaler,
+					obj metav1.Object,
+					shouldProvision bool,
+					updatable bool,
+				) (reconcile.Result, error) {
+					pod, ok := obj.(*corev1.Pod)
+					if ok {
+						// Default env vars
+						expectedEnvVars := []corev1.EnvVar{
+							{
+								Name:  "scaleTargetRef",
+								Value: `{"kind":"","name":""}`,
+							},
+							{
+								Name:  "namespace",
+								Value: "test-namespace",
+							},
+						}
+
+						if !cmp.Equal(expectedEnvVars, pod.Spec.Containers[0].Env) {
+							t.Errorf("Env vars mismatch (-want +got):\n%s",
+								cmp.Diff(expectedEnvVars, pod.Spec.Containers[0].Env))
+							return reconcile.Result{}, nil
+						}
+						return reconcile.Result{}, nil
+					}
+					return reconcile.Result{}, nil
+				}
+				reconciler.podCleanup = func(reqLogger logr.Logger, instance *custompodautoscalercomv1.CustomPodAutoscaler) error {
+					return errors.New("Error cleaning up pods")
+				}
+				return reconciler
+			}(),
+		},
+		{
 			"Successfully reconcile with no env vars",
 			reconcile.Result{},
 			nil,
@@ -475,6 +547,9 @@ func TestReconcile(t *testing.T) {
 						return reconcile.Result{}, nil
 					}
 					return reconcile.Result{}, nil
+				}
+				reconciler.podCleanup = func(reqLogger logr.Logger, instance *custompodautoscalercomv1.CustomPodAutoscaler) error {
+					return nil
 				}
 				return reconciler
 			}(),
@@ -574,6 +649,9 @@ func TestReconcile(t *testing.T) {
 					}
 					return reconcile.Result{}, nil
 				}
+				reconciler.podCleanup = func(reqLogger logr.Logger, instance *custompodautoscalercomv1.CustomPodAutoscaler) error {
+					return nil
+				}
 				return reconciler
 			}(),
 		},
@@ -650,6 +728,9 @@ func TestReconcile(t *testing.T) {
 						return reconcile.Result{}, nil
 					}
 					return reconcile.Result{}, nil
+				}
+				reconciler.podCleanup = func(reqLogger logr.Logger, instance *custompodautoscalercomv1.CustomPodAutoscaler) error {
+					return nil
 				}
 				return reconciler
 			}(),
@@ -733,6 +814,9 @@ func TestReconcile(t *testing.T) {
 					}
 					return reconcile.Result{}, nil
 				}
+				reconciler.podCleanup = func(reqLogger logr.Logger, instance *custompodautoscalercomv1.CustomPodAutoscaler) error {
+					return nil
+				}
 				return reconciler
 			}(),
 		},
@@ -785,6 +869,65 @@ func TestReconcile(t *testing.T) {
 					updatable bool,
 				) (reconcile.Result, error) {
 					return reconcile.Result{}, nil
+				}
+				reconciler.podCleanup = func(reqLogger logr.Logger, instance *custompodautoscalercomv1.CustomPodAutoscaler) error {
+					return nil
+				}
+				return reconciler
+			}(),
+		},
+		{
+			"Successfully reconcile while requesting a role with access to manage argo rollouts",
+			reconcile.Result{},
+			nil,
+			fake.NewClientBuilder().WithScheme(func() *runtime.Scheme {
+				s := runtime.NewScheme()
+				s.AddKnownTypes(custompodautoscalercomv1.GroupVersion, &custompodautoscalercomv1.CustomPodAutoscaler{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "test-namespace",
+					},
+				})
+				return s
+			}()).WithRuntimeObjects(
+				&custompodautoscalercomv1.CustomPodAutoscaler{
+					Spec: custompodautoscalercomv1.CustomPodAutoscalerSpec{
+						Template: custompodautoscalercomv1.PodTemplateSpec{
+							Spec: custompodautoscalercomv1.PodSpec{
+								Containers: []corev1.Container{
+									{
+										Name: "test container",
+									},
+								},
+							},
+						},
+						RoleRequiresArgoRollouts: boolPtr(true),
+					},
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "test-namespace",
+					},
+				},
+			).Build(),
+			reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      "test",
+					Namespace: "test-namespace",
+				},
+			},
+			func() *fakek8sReconciler {
+				reconciler := &fakek8sReconciler{}
+				reconciler.reconcile = func(
+					reqLogger logr.Logger,
+					instance *custompodautoscalercomv1.CustomPodAutoscaler,
+					obj metav1.Object,
+					shouldProvision bool,
+					updatable bool,
+				) (reconcile.Result, error) {
+					return reconcile.Result{}, nil
+				}
+				reconciler.podCleanup = func(reqLogger logr.Logger, instance *custompodautoscalercomv1.CustomPodAutoscaler) error {
+					return nil
 				}
 				return reconciler
 			}(),
