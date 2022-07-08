@@ -1,5 +1,5 @@
 /*
-Copyright 2021 The Custom Pod Autoscaler Authors.
+Copyright 2022 The Custom Pod Autoscaler Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -151,4 +151,62 @@ func (k *KubernetesResourceReconciler) Reconcile(
 
 	reqLogger.Info("Skip reconcile: k8s object already exists with expected owner", "Namespace", obj.GetNamespace(), "Name", obj.GetName())
 	return reconcile.Result{}, nil
+}
+
+// PodCleanup will look for any Pods that have the v1.custompodautoscaler.com/owned-by label set to the name of the CPA
+// and delete any 'orphaned' Pods, these are Pods that are owned by the CPA but are no longer defined in the CPA
+// PodTemplateSpec (for example if the PodTemplateSpec has renamed the Pod, it should delete the old Pod as it
+// provisions a new Pod so there aren't two Pods for the CPA)
+func (k *KubernetesResourceReconciler) PodCleanup(reqLogger logr.Logger, instance *custompodautoscalercomv1.CustomPodAutoscaler) error {
+	pods := &corev1.PodList{}
+	err := k.Client.List(context.Background(), pods,
+		client.MatchingLabels{"v1.custompodautoscaler.com/owned-by": instance.Name},
+		client.InNamespace(instance.Namespace))
+
+	if err != nil {
+		return err
+	}
+
+	for _, pod := range pods.Items {
+		managed := false
+		for _, ownerRef := range pod.OwnerReferences {
+			if ownerRef.APIVersion != instance.APIVersion || ownerRef.Kind != instance.Kind || ownerRef.Name != instance.Name {
+				continue
+			}
+
+			managed = true
+		}
+
+		if !managed {
+			continue
+		}
+
+		if instance.Spec.Template.ObjectMeta.Name == "" {
+			// Using instance name, delete any pod that isn't using the instance name
+			if pod.Name == instance.Name {
+				continue
+			}
+
+			err = k.deleteOrphan(reqLogger, pod)
+			if err != nil {
+				return err
+			}
+			continue
+		}
+
+		// Using name defined in template, delete any pod that doesn't match that name
+		if pod.Name != instance.Spec.Template.ObjectMeta.Name {
+			err = k.deleteOrphan(reqLogger, pod)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (k *KubernetesResourceReconciler) deleteOrphan(reqLogger logr.Logger, pod corev1.Pod) error {
+	reqLogger.Info("Found orphaned Pod (owned by CPA but not currently defined), deleting", "Namespace", pod.GetNamespace(), "Name", pod.GetName())
+	return k.Client.Delete(context.Background(), &pod)
 }

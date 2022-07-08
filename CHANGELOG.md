@@ -5,8 +5,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-
-- Fixed bug that pod metadata was not preserved when creating the pod ([#87](https://github.com/jthomperoo/custom-pod-autoscaler-operator/issues/87)).
+### Fixed
+- Bug that pod metadata was not preserved when creating the pod ([#87](https://github.com/jthomperoo/custom-pod-autoscaler-operator/issues/87)).
+### Changed
+- Each resource provisioned by the CPA will now have the label `v1.custompodautoscaler.com/owned-by` which will
+contain the name of the CPA that owns the resource. This is used to help look up resources and link them back to
+the owned CPA. This allows the managed Pod to change name, and the operator will know to delete the old Pod when it
+provisions the new Pod. Addresses [#95](https://github.com/jthomperoo/custom-pod-autoscaler-operator/issues/95).
 
 ## [v1.2.1] - 2022-04-17
 ### Fixed
