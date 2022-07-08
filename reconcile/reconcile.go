@@ -21,6 +21,7 @@ import (
 
 	"github.com/go-logr/logr"
 	custompodautoscalercomv1 "github.com/jthomperoo/custom-pod-autoscaler-operator/api/v1"
+	"github.com/jthomperoo/custom-pod-autoscaler-operator/controllers"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -160,7 +161,7 @@ func (k *KubernetesResourceReconciler) Reconcile(
 func (k *KubernetesResourceReconciler) PodCleanup(reqLogger logr.Logger, instance *custompodautoscalercomv1.CustomPodAutoscaler) error {
 	pods := &corev1.PodList{}
 	err := k.Client.List(context.Background(), pods,
-		client.MatchingLabels{"v1.custompodautoscaler.com/owned-by": instance.Name},
+		client.MatchingLabels{controllers.OwnedByLabel: instance.Name},
 		client.InNamespace(instance.Namespace))
 
 	if err != nil {
