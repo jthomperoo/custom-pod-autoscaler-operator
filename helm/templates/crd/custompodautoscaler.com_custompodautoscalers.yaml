@@ -17,7 +17,26 @@ spec:
     singular: custompodautoscaler
   scope: Namespaced
   versions:
-  - name: v1
+  - additionalPrinterColumns:
+    - description: The identifier for the resource being scaled in the format <api-version>/<api-kind/<name>
+      jsonPath: .status.reference
+      name: Reference
+      type: string
+    - description: The current number of replicas of pods managed by this autoscaler
+        as last seen by the autoscaler
+      jsonPath: .status.currentReplicas
+      name: Current Replicas
+      type: string
+    - description: The desired number of replicas of pods managed by this autoscaler
+        as last calculated by the autoscaler
+      jsonPath: .status.desiredReplicas
+      name: Desired Replicas
+      type: string
+    - description: The last time the CustomPodAutoscaler scaled the number of pods
+      jsonPath: .status.lastScaleTime
+      name: Last Scale Time
+      type: date
+    name: v1
     schema:
       openAPIV3Schema:
         description: CustomPodAutoscaler is the Schema for the custompodautoscalers
@@ -7224,6 +7243,53 @@ spec:
             type: object
           status:
             description: CustomPodAutoscalerStatus defines the observed state of CustomPodAutoscaler
+            properties:
+              currentEvaluation:
+                description: CurrentEvaluation is the last evaluation decision retrieved
+                  by this autoscaler, the last evaluation decision retrieved in the
+                  evaluation stage.
+                properties:
+                  targetReplicas:
+                    format: int32
+                    type: integer
+                required:
+                - targetReplicas
+                type: object
+              currentMetrics:
+                description: CurrentMetrics is the last set of metrics gathered by
+                  this autoscaler, the last metrics gathered in the metric gathering
+                  stage.
+                items:
+                  description: ResourceMetric is the result of the custom metric calculation,
+                    containing information on the relevant resource and the metric
+                    value
+                  properties:
+                    resource:
+                      type: string
+                    value:
+                      type: string
+                  type: object
+                type: array
+              currentReplicas:
+                description: CurrentReplicas is the current number of replicas of
+                  pods managed by this autoscaler, as last seen by the autoscaler.
+                format: int32
+                type: integer
+              desiredReplicas:
+                description: DesiredReplicas is the desired number of replicas of
+                  pods managed by this autoscaler, as last calculated by the autoscaler.
+                format: int32
+                type: integer
+              lastScaleTime:
+                description: LastScaleTime is the last time the CustomPodAutoscaler
+                  scaled the number of pods, used by the autoscaler to keep track
+                  of downscale stabilization between restarts.
+                format: date-time
+                type: string
+              reference:
+                description: Reference is the identifier for the resource being scaled
+                  in the format <api-version>/<api-kind/<name>.
+                type: string
             type: object
         type: object
     served: true

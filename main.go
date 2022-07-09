@@ -1,5 +1,5 @@
 /*
-Copyright 2020 The Custom Pod Autoscaler Authors.
+Copyright 2022 The Custom Pod Autoscaler Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,8 +29,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	custompodautoscalercomv1 "github.com/jthomperoo/custom-pod-autoscaler-operator/api/v1"
-	"github.com/jthomperoo/custom-pod-autoscaler-operator/controllers"
-	"github.com/jthomperoo/custom-pod-autoscaler-operator/reconcile"
+	"github.com/jthomperoo/custom-pod-autoscaler-operator/internal/controllers"
+	"github.com/jthomperoo/custom-pod-autoscaler-operator/internal/reconcile"
 	// +kubebuilder:scaffold:imports
 )
 

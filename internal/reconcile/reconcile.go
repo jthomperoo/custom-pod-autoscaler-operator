@@ -21,7 +21,7 @@ import (
 
 	"github.com/go-logr/logr"
 	custompodautoscalercomv1 "github.com/jthomperoo/custom-pod-autoscaler-operator/api/v1"
-	"github.com/jthomperoo/custom-pod-autoscaler-operator/controllers"
+	"github.com/jthomperoo/custom-pod-autoscaler-operator/internal/controllers"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

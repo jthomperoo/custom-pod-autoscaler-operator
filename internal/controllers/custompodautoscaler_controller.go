@@ -1,5 +1,5 @@
 /*
-Copyright 2021 The Custom Pod Autoscaler Authors.
+Copyright 2022 The Custom Pod Autoscaler Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -113,6 +114,17 @@ func (r *CustomPodAutoscalerReconciler) Reconcile(context context.Context, req c
 		}
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
+	}
+
+	reference := fmt.Sprintf("%s/%s/%s", instance.Spec.ScaleTargetRef.APIVersion, instance.Spec.ScaleTargetRef.Kind, instance.Spec.ScaleTargetRef.Name)
+	reqLogger.Info("Checking for equality between", "a", reference, "b", instance.Status.Reference)
+	if instance.Status.Reference != reference {
+		reqLogger.Info("Not equal, updating", "a", reference, "b", instance.Status.Reference)
+		instance.Status.Reference = reference
+		err = r.Client.Status().Update(context, instance)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
 	}
 
 	if instance.Spec.ProvisionRole == nil {
