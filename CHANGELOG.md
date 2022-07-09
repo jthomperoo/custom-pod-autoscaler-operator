@@ -23,6 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `Current Replicas` is the current number of replicas of pods managed by this autoscaler.
     - `Desired Replicas` is the desired number of replicas of pods managed by this autoscaler.
     - `Reference` is the identifier for the resource being scaled in the format `<api-version>/<api-kind/<name>`.
+### Changed
+- Project restructured to be a Go dependency, all Go modules not under the `internal/` directory can be used as
+dependencies and will have a backwards compatiblity guarantee.
 
 ## [v1.3.0] - 2022-07-08
 ### Fixed
