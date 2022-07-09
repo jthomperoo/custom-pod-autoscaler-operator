@@ -7247,7 +7247,7 @@ spec:
               currentEvaluation:
                 description: CurrentEvaluation is the last evaluation decision retrieved
                   by this autoscaler, the last evaluation decision retrieved in the
-                  evaluation stage
+                  evaluation stage.
                 properties:
                   targetReplicas:
                     format: int32
@@ -7258,7 +7258,7 @@ spec:
               currentMetrics:
                 description: CurrentMetrics is the last set of metrics gathered by
                   this autoscaler, the last metrics gathered in the metric gathering
-                  stage
+                  stage.
                 items:
                   description: ResourceMetric is the result of the custom metric calculation,
                     containing information on the relevant resource and the metric
@@ -7288,7 +7288,7 @@ spec:
                 type: string
               reference:
                 description: Reference is the identifier for the resource being scaled
-                  in the format <api-version>/<api-kind/<name>
+                  in the format <api-version>/<api-kind/<name>.
                 type: string
             type: object
         type: object
