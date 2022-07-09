@@ -5,6 +5,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- New status fields to help debugging and to give more context for scaling decisions.
+    - `lastScaleTime` is the last time the CustomPodAutoscaler scaled the number of pods, used by the autoscaler to
+    keep track of downscale stabilization between restarts.
+	- `currentReplicas` is the current number of replicas of pods managed by this autoscaler, as last seen by the
+    autoscaler.
+	- `desiredReplicas` is the desired number of replicas of pods managed by this autoscaler, as last calculated by the
+    autoscaler.
+	- `currentMetrics` is the last set of metrics gathered by this autoscaler, the last metrics gathered in the
+	metric gathering stage
+	- `currentEvaluation` is the last evaluation decision retrieved by this autoscaler, the last evaluation decision
+	retrieved in the evaluation stage
+	- `reference` is the identifier for the resource being scaled in the format `<api-version>/<api-kind/<name>`.
+- Certain fields are now added as printer columns, so are visible when you do `kubectl get cpa` to add more context:
+    - `Last Scale Time` is the last time the CustomPodAutoscaler scaled the number of pods.
+    - `Current Replicas` is the current number of replicas of pods managed by this autoscaler.
+    - `Desired Replicas` is the desired number of replicas of pods managed by this autoscaler.
+    - `Reference` is the identifier for the resource being scaled in the format `<api-version>/<api-kind/<name>`.
 
 ## [v1.3.0] - 2022-07-08
 ### Fixed

@@ -1,5 +1,5 @@
 /*
-Copyright 2021 The Custom Pod Autoscaler Authors.
+Copyright 2022 The Custom Pod Autoscaler Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,6 +23,8 @@ import (
 
 	autoscaling "k8s.io/api/autoscaling/v1"
 
+	"github.com/jthomperoo/custom-pod-autoscaler/v2/evaluate"
+	"github.com/jthomperoo/custom-pod-autoscaler/v2/metric"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -49,7 +51,35 @@ type CustomPodAutoscalerSpec struct {
 }
 
 // CustomPodAutoscalerStatus defines the observed state of CustomPodAutoscaler
-type CustomPodAutoscalerStatus struct{}
+type CustomPodAutoscalerStatus struct {
+	// LastScaleTime is the last time the CustomPodAutoscaler scaled the number of pods, used by the autoscaler to
+	// keep track of downscale stabilization between restarts.
+	// +optional
+	LastScaleTime *metav1.Time `json:"lastScaleTime,omitempty"`
+
+	// CurrentReplicas is the current number of replicas of pods managed by this autoscaler, as last seen by the autoscaler.
+	// +optional
+	CurrentReplicas int32 `json:"currentReplicas"`
+
+	// DesiredReplicas is the desired number of replicas of pods managed by this autoscaler, as last calculated by the
+	// autoscaler.
+	// +optional
+	DesiredReplicas int32 `json:"desiredReplicas"`
+
+	// CurrentMetrics is the last set of metrics gathered by this autoscaler, the last metrics gathered in the
+	// metric gathering stage.
+	// +optional
+	CurrentMetrics []metric.ResourceMetric `json:"currentMetrics"`
+
+	// CurrentEvaluation is the last evaluation decision retrieved by this autoscaler, the last evaluation decision
+	// retrieved in the evaluation stage.
+	// +optional
+	CurrentEvaluation evaluate.Evaluation `json:"currentEvaluation"`
+
+	// Reference is the identifier for the resource being scaled in the format <api-version>/<api-kind/<name>.
+	// +optional
+	Reference string `json:"reference"`
+}
 
 // CustomPodAutoscaler is the Schema for the custompodautoscalers API
 // +kubebuilder:object:root=true
@@ -57,6 +87,10 @@ type CustomPodAutoscalerStatus struct{}
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:shortName=cpa
+// +kubebuilder:printcolumn:name="Reference",type="string",JSONPath=`.status.reference`,description="The identifier for the resource being scaled in the format <api-version>/<api-kind/<name>"
+// +kubebuilder:printcolumn:name="Current Replicas",type="string",JSONPath=`.status.currentReplicas`,description="The current number of replicas of pods managed by this autoscaler as last seen by the autoscaler"
+// +kubebuilder:printcolumn:name="Desired Replicas",type="string",JSONPath=`.status.desiredReplicas`,description="The desired number of replicas of pods managed by this autoscaler as last calculated by the autoscaler"
+// +kubebuilder:printcolumn:name="Last Scale Time",type="date",JSONPath=`.status.lastScaleTime`,description="The last time the CustomPodAutoscaler scaled the number of pods"
 // +groupName=custompodautoscaler.com
 type CustomPodAutoscaler struct {
 	metav1.TypeMeta   `json:",inline"`
