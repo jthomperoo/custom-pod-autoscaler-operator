@@ -30,6 +30,7 @@ rules:
   - apps
   resources:
   - deployments
+  - deployments/scale
   - daemonsets
   - replicasets
   - statefulsets

@@ -128,9 +128,17 @@ func (r *CustomPodAutoscalerReconciler) Reconcile(context context.Context, req c
 	}
 
 	// Check the presence of "v1.custompodautoscaler.com/paused-replicas" annotation on the CPA pod
+	// Pauses autoscaling (deletes autoscaling pod) and manually sets replica count of scale target
 	// Mimics functionality of https://keda.sh/docs/2.11/concepts/scaling-deployments/#pause-autoscaling
 	pausedReplicasCount, pausedAnnotationFound := instance.GetAnnotations()[PausedReplicasAnnotation]
 	if pausedAnnotationFound {
+
+		// Use the reconciler client to delete the pod that normally does the scaling
+		// This should be done first so the autoscaler does not override
+		// the scaling changes made by the operator
+		if err := r.Client.Delete(context, instance); err != nil {
+			return reconcile.Result{}, err
+		}
 
 		// Get paused replicas count from annotation metadata
 		pausedReplicasCountInt64, err := strconv.ParseInt(pausedReplicasCount, 10, 32)
@@ -139,12 +147,13 @@ func (r *CustomPodAutoscalerReconciler) Reconcile(context context.Context, req c
 			return reconcile.Result{}, err
 		}
 
-		// ScaleTargetRef{} = CrossVersionObjectReference{Kind string, Name string, APIVersion string}s
+		// scaleTargetRef is the pod or service that is being autoscaled
+		// ScaleTargetRef{} = CrossVersionObjectReference{Kind string, Name string, APIVersion string}
 		// https://github.com/kubernetes/api/blob/v0.27.4/autoscaling/v1/types.go
 		scaleTargetRef := instance.Spec.ScaleTargetRef
 
-		// GroupVersion{Group string, Version string}
-		// E.X. ParseGroupVersion("custompodautoscaler.com/v1") = GroupVersion{"custompodautoscaler.com", "v1"}
+		// ex. ParseGroupVersion("custompodautoscaler.com/v1") =
+		//              GroupVersion{Group: "custompodautoscaler.com", Version: "v1"}
 		// https://github.com/kubernetes/apimachinery/blob/v0.27.3/pkg/runtime/schema/group_version.go
 		resourceGV, err := schema.ParseGroupVersion(scaleTargetRef.APIVersion)
 		if err != nil {
@@ -152,17 +161,12 @@ func (r *CustomPodAutoscalerReconciler) Reconcile(context context.Context, req c
 		}
 
 		targetGR := schema.GroupResource{
-			Group:    resourceGV.Group,    // "custompodautoscaler.com"
-			Resource: scaleTargetRef.Kind, // "CustomPodAutoscaler"
+			Group:    resourceGV.Group,    // ex. "custompodautoscaler.com"
+			Resource: scaleTargetRef.Kind, // ex. "CustomPodAutoscaler"
 		}
 
 		// set up the scaling client if it does not already exist
-
-		////////////////////////////////
-		// Consider moving this setup into main
-		// I am doing lazy evaluation but might as well put it in main?
-		////////////////////////////////
-
+		// lazy evaluation so main() setup does not need to be changed at all
 		if r.ScalingClient == nil {
 			err = r.SetupScalingClient()
 			if err != nil {
@@ -170,13 +174,8 @@ func (r *CustomPodAutoscalerReconciler) Reconcile(context context.Context, req c
 			}
 		}
 
-		// https://github.com/kubernetes/client-go/blob/master/scale/client.go
 		// Get the scale request for a resource (https://github.com/kubernetes/api/blob/v0.27.4/autoscaling/v1/types.go)
-
-		////////////////////////////////////////////
-		// not sure if it's okay to pass in the regular context instead of context.Background()
-		////////////////////////////////////////////
-
+		// https://github.com/kubernetes/client-go/blob/master/scale/client.go
 		scaleResource, err := r.ScalingClient.Scales(instance.Namespace).Get(context, targetGR, scaleTargetRef.Name, metav1.GetOptions{})
 		if err != nil {
 			return reconcile.Result{}, err
@@ -185,15 +184,10 @@ func (r *CustomPodAutoscalerReconciler) Reconcile(context context.Context, req c
 		// Set new target replicas
 		scaleResource.Spec.Replicas = pausedReplicasCountInt32
 
+		// Update the resource with new replica count
 		// https://github.com/kubernetes/client-go/blob/master/scale/client.go
-		// Update the resource with new replicas
 		_, err = r.ScalingClient.Scales(instance.Namespace).Update(context, targetGR, scaleResource, metav1.UpdateOptions{})
 		if err != nil {
-			return reconcile.Result{}, err
-		}
-
-		// Use the reconciler client to delete the pod that normally does the scaling
-		if err := r.Client.Delete(context, instance); err != nil {
 			return reconcile.Result{}, err
 		}
 
@@ -425,39 +419,39 @@ func (r *CustomPodAutoscalerReconciler) SetupWithManager(mgr ctrl.Manager) error
 
 // SetupScalingClient sets up a client for the CPA reconciler to use for manually
 // setting the replicas count of a scale target pod while the autoscaler is paused.
-// Functionality is a simplified version of the autoscaler itself.
+// Functionality is based on the setup for a regular CPA autoscaler in main()
 func (r *CustomPodAutoscalerReconciler) SetupScalingClient() error {
 
-	// https://github.com/kubernetes/client-go/blob/master/rest/config.go
 	// InClusterConfig returns a config object which uses the service account
 	// kubernetes gives to pods. It's intended for clients that expect to be
 	// running inside a pod running on kubernetes. It will return ErrNotInCluster
 	// if called from a process not running in a kubernetes environment.
+	// https://github.com/kubernetes/client-go/blob/master/rest/config.go
 	clusterConfig, err := rest.InClusterConfig()
 	if err != nil {
 		return err
 	}
 
-	// https://github.com/kubernetes/client-go/blob/master/scale/client.go
 	// NewForConfig creates a new ScalesGetter which resolves kinds
 	// to resources using the given RESTMapper, and API paths using
 	// the given dynamic.APIPathResolverFunc.
+	// https://github.com/kubernetes/client-go/blob/master/scale/client.go
 	clientset, err := kubernetes.NewForConfig(clusterConfig)
 	if err != nil {
 		return err
 	}
 
-	// https://github.com/kubernetes/client-go/blob/master/restmapper/discovery.go
 	// GetAPIGroupResources uses the provided discovery client to gather
 	// discovery information and populate a slice of APIGroupResources
 	// APIGroupResources{Group metav1.APIGroup, VersionedResources map[string][]metav1.APIResource}
+	// https://github.com/kubernetes/client-go/blob/master/restmapper/discovery.go
 	groupResources, err := restmapper.GetAPIGroupResources(clientset.Discovery())
 	if err != nil {
 		return err
 	}
 
+	// Set up a client for scaling
 	// https://github.com/kubernetes/client-go/blob/master/scale/client.go
-	// set up a client for scaling
 	scaleClient := k8sscale.New(
 		clientset.RESTClient(),
 		restmapper.NewDiscoveryRESTMapper(groupResources),
