@@ -76,6 +76,11 @@ func main() {
 
 	client := mgr.GetClient()
 	scheme := mgr.GetScheme()
+	scalingClient, err := controllers.SetupScalingClient()
+	if err != nil {
+		setupLog.Error(err, "unable to set up scaling client")
+		os.Exit(1)
+	}
 
 	if err = (&controllers.CustomPodAutoscalerReconciler{
 		Client: client,
@@ -86,6 +91,7 @@ func main() {
 			Scheme:               scheme,
 			ControllerReferencer: controllerutil.SetControllerReference,
 		},
+		ScalingClient: scalingClient,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "CustomPodAutoscaler")
 		os.Exit(1)

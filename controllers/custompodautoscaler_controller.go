@@ -132,6 +132,12 @@ func (r *CustomPodAutoscalerReconciler) Reconcile(context context.Context, req c
 	// Mimics functionality of https://keda.sh/docs/2.11/concepts/scaling-deployments/#pause-autoscaling
 	pausedReplicasCount, pausedAnnotationFound := instance.GetAnnotations()[PausedReplicasAnnotation]
 	if pausedAnnotationFound {
+		// Get paused replicas count from annotation metadata
+		pausedReplicasCountInt64, err := strconv.ParseInt(pausedReplicasCount, 10, 32)
+		pausedReplicasCountInt32 := int32(pausedReplicasCountInt64)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
 
 		// Use the reconciler client to delete the pod that normally does the scaling
 		// This should be done first so the autoscaler does not override
@@ -140,20 +146,13 @@ func (r *CustomPodAutoscalerReconciler) Reconcile(context context.Context, req c
 			return reconcile.Result{}, err
 		}
 
-		// Get paused replicas count from annotation metadata
-		pausedReplicasCountInt64, err := strconv.ParseInt(pausedReplicasCount, 10, 32)
-		pausedReplicasCountInt32 := int32(pausedReplicasCountInt64)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-
 		// scaleTargetRef is the pod or service that is being autoscaled
 		// ScaleTargetRef{} = CrossVersionObjectReference{Kind string, Name string, APIVersion string}
 		// https://github.com/kubernetes/api/blob/v0.27.4/autoscaling/v1/types.go
 		scaleTargetRef := instance.Spec.ScaleTargetRef
 
-		// ex. ParseGroupVersion("custompodautoscaler.com/v1") =
-		//              GroupVersion{Group: "custompodautoscaler.com", Version: "v1"}
+		// ex. ParseGroupVersion("custompodautoscaler.com/v1")
+		//     = GroupVersion{Group: "custompodautoscaler.com", Version: "v1"}
 		// https://github.com/kubernetes/apimachinery/blob/v0.27.3/pkg/runtime/schema/group_version.go
 		resourceGV, err := schema.ParseGroupVersion(scaleTargetRef.APIVersion)
 		if err != nil {
@@ -163,15 +162,6 @@ func (r *CustomPodAutoscalerReconciler) Reconcile(context context.Context, req c
 		targetGR := schema.GroupResource{
 			Group:    resourceGV.Group,    // ex. "custompodautoscaler.com"
 			Resource: scaleTargetRef.Kind, // ex. "CustomPodAutoscaler"
-		}
-
-		// set up the scaling client if it does not already exist
-		// lazy evaluation so main() setup does not need to be changed at all
-		if r.ScalingClient == nil {
-			err = r.SetupScalingClient()
-			if err != nil {
-				return reconcile.Result{}, err
-			}
 		}
 
 		// Get the scale request for a resource (https://github.com/kubernetes/api/blob/v0.27.4/autoscaling/v1/types.go)
@@ -420,7 +410,7 @@ func (r *CustomPodAutoscalerReconciler) SetupWithManager(mgr ctrl.Manager) error
 // SetupScalingClient sets up a client for the CPA reconciler to use for manually
 // setting the replicas count of a scale target pod while the autoscaler is paused.
 // Functionality is based on the setup for a regular CPA autoscaler in main()
-func (r *CustomPodAutoscalerReconciler) SetupScalingClient() error {
+func SetupScalingClient() (k8sscale.ScalesGetter, error) {
 
 	// InClusterConfig returns a config object which uses the service account
 	// kubernetes gives to pods. It's intended for clients that expect to be
@@ -429,7 +419,7 @@ func (r *CustomPodAutoscalerReconciler) SetupScalingClient() error {
 	// https://github.com/kubernetes/client-go/blob/master/rest/config.go
 	clusterConfig, err := rest.InClusterConfig()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// NewForConfig creates a new ScalesGetter which resolves kinds
@@ -438,7 +428,7 @@ func (r *CustomPodAutoscalerReconciler) SetupScalingClient() error {
 	// https://github.com/kubernetes/client-go/blob/master/scale/client.go
 	clientset, err := kubernetes.NewForConfig(clusterConfig)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// GetAPIGroupResources uses the provided discovery client to gather
@@ -447,7 +437,7 @@ func (r *CustomPodAutoscalerReconciler) SetupScalingClient() error {
 	// https://github.com/kubernetes/client-go/blob/master/restmapper/discovery.go
 	groupResources, err := restmapper.GetAPIGroupResources(clientset.Discovery())
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Set up a client for scaling
@@ -461,6 +451,5 @@ func (r *CustomPodAutoscalerReconciler) SetupScalingClient() error {
 		),
 	)
 
-	r.ScalingClient = scaleClient
-	return err
+	return scaleClient, err
 }
