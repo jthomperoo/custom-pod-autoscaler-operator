@@ -33,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	k8sscale "k8s.io/client-go/scale"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -120,19 +121,22 @@ func (f *fakek8sReconciler) PodCleanup(reqLogger logr.Logger, instance *custompo
 }
 
 type fakeClient struct {
-	get         func(ctx context.Context, key client.ObjectKey, obj client.Object) error
-	list        func(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error
-	create      func(ctx context.Context, obj client.Object, opts ...client.CreateOption) error
-	delete      func(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error
-	update      func(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error
-	patch       func(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error
-	deleteAllOf func(ctx context.Context, obj client.Object, opts ...client.DeleteAllOfOption) error
-	status      func() client.StatusWriter
-	scheme      func() *runtime.Scheme
-	restMapper  func() meta.RESTMapper
+	get                 func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error
+	list                func(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error
+	create              func(ctx context.Context, obj client.Object, opts ...client.CreateOption) error
+	delete              func(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error
+	update              func(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error
+	patch               func(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error
+	deleteAllOf         func(ctx context.Context, obj client.Object, opts ...client.DeleteAllOfOption) error
+	status              func() client.StatusWriter
+	scheme              func() *runtime.Scheme
+	restMapper          func() meta.RESTMapper
+	groupVersionKindFor func(obj runtime.Object) (schema.GroupVersionKind, error)
+	isObjectNamespaced  func(obj runtime.Object) (bool, error)
+	subResource         func(subResource string) client.SubResourceClient
 }
 
-func (f *fakeClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object) error {
+func (f *fakeClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 	return f.get(ctx, key, obj)
 }
 
@@ -170,6 +174,18 @@ func (f *fakeClient) Scheme() *runtime.Scheme {
 
 func (f *fakeClient) RESTMapper() meta.RESTMapper {
 	return f.restMapper()
+}
+
+func (f *fakeClient) GroupVersionKindFor(obj runtime.Object) (schema.GroupVersionKind, error) {
+	return f.groupVersionKindFor(obj)
+}
+
+func (f *fakeClient) IsObjectNamespaced(obj runtime.Object) (bool, error) {
+	return f.isObjectNamespaced(obj)
+}
+
+func (f *fakeClient) SubResource(subResource string) client.SubResourceClient {
+	return f.subResource(subResource)
 }
 
 func TestReconcile(t *testing.T) {
@@ -218,7 +234,7 @@ func TestReconcile(t *testing.T) {
 			errors.New("Error getting CPA"),
 			func() *fakeClient {
 				fclient := &fakeClient{}
-				fclient.get = func(ctx context.Context, key client.ObjectKey, obj client.Object) error {
+				fclient.get = func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 					return errors.New("Error getting CPA")
 				}
 				return fclient
