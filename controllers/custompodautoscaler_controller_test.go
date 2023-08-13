@@ -27,15 +27,20 @@ import (
 	"github.com/google/go-cmp/cmp"
 	custompodautoscalercomv1 "github.com/jthomperoo/custom-pod-autoscaler-operator/api/v1"
 	"github.com/jthomperoo/custom-pod-autoscaler-operator/controllers"
+	autoscalingv1 "k8s.io/api/autoscaling/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	k8sscale "k8s.io/client-go/scale"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	scaleFake "k8s.io/client-go/scale/fake"
+	k8stesting "k8s.io/client-go/testing"
 )
 
 func boolPtr(val bool) *bool {
@@ -182,6 +187,7 @@ func TestReconcile(t *testing.T) {
 		client        client.Client
 		request       reconcile.Request
 		k8sreconciler controllers.K8sReconciler
+		scalingClient k8sscale.ScalesGetter
 	}{
 		{
 			"No matching CPA",
@@ -204,6 +210,7 @@ func TestReconcile(t *testing.T) {
 				},
 			},
 			nil,
+			nil,
 		},
 		{
 			"Error on getting CPA",
@@ -222,6 +229,7 @@ func TestReconcile(t *testing.T) {
 					Namespace: "test-namespace",
 				},
 			},
+			nil,
 			nil,
 		},
 		{
@@ -268,6 +276,7 @@ func TestReconcile(t *testing.T) {
 				}
 				return reconciler
 			}(),
+			nil,
 		},
 		{
 			"Fail to reconcile role",
@@ -313,6 +322,7 @@ func TestReconcile(t *testing.T) {
 				}
 				return reconciler
 			}(),
+			nil,
 		},
 		{
 			"Fail to reconcile role binding",
@@ -358,6 +368,7 @@ func TestReconcile(t *testing.T) {
 				}
 				return reconciler
 			}(),
+			nil,
 		},
 		{
 			"Fail to reconcile pod",
@@ -401,6 +412,7 @@ func TestReconcile(t *testing.T) {
 				}
 				return reconciler
 			}(),
+			nil,
 		},
 		{
 			"Fail to clean up orphaned pods",
@@ -477,6 +489,7 @@ func TestReconcile(t *testing.T) {
 				}
 				return reconciler
 			}(),
+			nil,
 		},
 		{
 			"Successfully reconcile with no env vars",
@@ -553,6 +566,7 @@ func TestReconcile(t *testing.T) {
 				}
 				return reconciler
 			}(),
+			nil,
 		},
 		{
 			"Successfully reconcile with env vars",
@@ -654,6 +668,7 @@ func TestReconcile(t *testing.T) {
 				}
 				return reconciler
 			}(),
+			nil,
 		},
 		{
 			"Successfully reconcile with labels set in the container",
@@ -734,6 +749,7 @@ func TestReconcile(t *testing.T) {
 				}
 				return reconciler
 			}(),
+			nil,
 		},
 		{
 			"Successfully reconcile with env vars set in pod spec and no config env vars",
@@ -819,6 +835,7 @@ func TestReconcile(t *testing.T) {
 				}
 				return reconciler
 			}(),
+			nil,
 		},
 		{
 			"Successfully reconcile while requesting a role with access to the metrics server",
@@ -875,6 +892,7 @@ func TestReconcile(t *testing.T) {
 				}
 				return reconciler
 			}(),
+			nil,
 		},
 		{
 			"Successfully reconcile while requesting a role with access to manage argo rollouts",
@@ -931,6 +949,190 @@ func TestReconcile(t *testing.T) {
 				}
 				return reconciler
 			}(),
+			nil,
+		},
+		{
+			"Successfully reconcile when pause annotation present",
+			reconcile.Result{},
+			nil,
+			fake.NewClientBuilder().WithScheme(func() *runtime.Scheme {
+				s := runtime.NewScheme()
+				s.AddKnownTypes(custompodautoscalercomv1.GroupVersion, &custompodautoscalercomv1.CustomPodAutoscaler{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "test-namespace",
+					},
+				})
+				return s
+			}()).WithRuntimeObjects(
+				&custompodautoscalercomv1.CustomPodAutoscaler{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "test-namespace",
+						Annotations: map[string]string{
+							controllers.PausedReplicasAnnotation: "5",
+						},
+					},
+					Spec: custompodautoscalercomv1.CustomPodAutoscalerSpec{
+						Template: custompodautoscalercomv1.PodTemplateSpec{
+							Spec: custompodautoscalercomv1.PodSpec{
+								Containers: []corev1.Container{
+									{
+										Name: "test container",
+									},
+								},
+							},
+						},
+					},
+				},
+			).Build(),
+			reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      "test",
+					Namespace: "test-namespace",
+				},
+			},
+			func() *fakek8sReconciler {
+				return &fakek8sReconciler{}
+			}(),
+			&scaleFake.FakeScaleClient{
+				Fake: k8stesting.Fake{
+					ReactionChain: []k8stesting.Reactor{
+						&k8stesting.SimpleReactor{
+							Resource: "*",
+							Verb:     "get",
+							Reaction: func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+								return true, &autoscalingv1.Scale{}, nil
+							},
+						},
+						&k8stesting.SimpleReactor{
+							Resource: "*",
+							Verb:     "update",
+							Reaction: func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+								return true, &autoscalingv1.Scale{}, nil
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			"Fail reconcile when scale Get API call fails",
+			reconcile.Result{},
+			errors.New(`Failed Get API call`),
+			fake.NewClientBuilder().WithScheme(func() *runtime.Scheme {
+				s := runtime.NewScheme()
+				s.AddKnownTypes(custompodautoscalercomv1.GroupVersion,
+					&custompodautoscalercomv1.CustomPodAutoscaler{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "test",
+							Namespace: "test-namespace",
+						},
+					})
+				return s
+			}()).WithRuntimeObjects(
+				&custompodautoscalercomv1.CustomPodAutoscaler{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "test-namespace",
+						Annotations: map[string]string{
+							controllers.PausedReplicasAnnotation: "5",
+						},
+					},
+					Spec: custompodautoscalercomv1.CustomPodAutoscalerSpec{
+						Template: custompodautoscalercomv1.PodTemplateSpec{
+							Spec: custompodautoscalercomv1.PodSpec{
+								Containers: []corev1.Container{
+									{
+										Name: "test container",
+									},
+								},
+							},
+						},
+					},
+				},
+			).Build(),
+			reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      "test",
+					Namespace: "test-namespace",
+				},
+			},
+			func() *fakek8sReconciler {
+				return &fakek8sReconciler{}
+			}(),
+			&scaleFake.FakeScaleClient{
+				Fake: k8stesting.Fake{
+					ReactionChain: []k8stesting.Reactor{
+						&k8stesting.SimpleReactor{
+							Resource: "*",
+							Verb:     "get",
+							Reaction: func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+								return true, nil, errors.New(`Failed Get API call`)
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			"Fail reconcile when scale Update API call fails",
+			reconcile.Result{},
+			errors.New(`Failed Update API call`),
+			fake.NewClientBuilder().WithScheme(func() *runtime.Scheme {
+				s := runtime.NewScheme()
+				s.AddKnownTypes(custompodautoscalercomv1.GroupVersion,
+					&custompodautoscalercomv1.CustomPodAutoscaler{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "test",
+							Namespace: "test-namespace",
+						},
+					})
+				return s
+			}()).WithRuntimeObjects(
+				&custompodautoscalercomv1.CustomPodAutoscaler{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "test-namespace",
+						Annotations: map[string]string{
+							controllers.PausedReplicasAnnotation: "5",
+						},
+					},
+					Spec: custompodautoscalercomv1.CustomPodAutoscalerSpec{
+						Template: custompodautoscalercomv1.PodTemplateSpec{
+							Spec: custompodautoscalercomv1.PodSpec{
+								Containers: []corev1.Container{
+									{
+										Name: "test container",
+									},
+								},
+							},
+						},
+					},
+				},
+			).Build(),
+			reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      "test",
+					Namespace: "test-namespace",
+				},
+			},
+			func() *fakek8sReconciler {
+				return &fakek8sReconciler{}
+			}(),
+			&scaleFake.FakeScaleClient{
+				Fake: k8stesting.Fake{
+					ReactionChain: []k8stesting.Reactor{
+						&k8stesting.SimpleReactor{
+							Resource: "*",
+							Verb:     "update",
+							Reaction: func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+								return true, nil, errors.New(`Failed Update API call`)
+							},
+						},
+					},
+				},
+			},
 		},
 	}
 	for _, test := range tests {
@@ -940,6 +1142,7 @@ func TestReconcile(t *testing.T) {
 				Scheme:                       runtime.NewScheme(),
 				KubernetesResourceReconciler: test.k8sreconciler,
 				Log:                          logr.Discard(),
+				ScalingClient:                test.scalingClient,
 			}
 			result, err := reconciler.Reconcile(context.Background(), test.request)
 			if !cmp.Equal(err, test.expectedErr, equateErrorMessage) {

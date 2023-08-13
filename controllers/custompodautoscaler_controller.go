@@ -18,28 +18,39 @@ package controllers
 
 import (
 	"context"
+	"strconv"
 
 	corev1 "k8s.io/api/core/v1"
+
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/json"
+
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/restmapper"
+	k8sscale "k8s.io/client-go/scale"
+
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/go-logr/logr"
-	"k8s.io/apimachinery/pkg/runtime"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	custompodautoscalercomv1 "github.com/jthomperoo/custom-pod-autoscaler-operator/api/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 )
 
 const (
-	managedByLabel = "app.kubernetes.io/managed-by"
-	OwnedByLabel   = "v1.custompodautoscaler.com/owned-by"
+	managedByLabel           = "app.kubernetes.io/managed-by"
+	OwnedByLabel             = "v1.custompodautoscaler.com/owned-by"
+	PausedReplicasAnnotation = "v1.custompodautoscaler.com/paused-replicas"
 )
 
 type K8sReconciler interface {
@@ -59,6 +70,7 @@ type CustomPodAutoscalerReconciler struct {
 	Log                          logr.Logger
 	Scheme                       *runtime.Scheme
 	KubernetesResourceReconciler K8sReconciler
+	ScalingClient                k8sscale.ScalesGetter
 }
 
 // PrimaryPred is the predicate that filters events for the CustomPodAutoscaler primary resource.
@@ -113,6 +125,64 @@ func (r *CustomPodAutoscalerReconciler) Reconcile(context context.Context, req c
 		}
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
+	}
+
+	// Check the presence of "v1.custompodautoscaler.com/paused-replicas" annotation on the CPA pod
+	// Pauses autoscaling (deletes autoscaling pod) and manually sets replica count of scale target
+	// Mimics functionality of https://keda.sh/docs/2.11/concepts/scaling-deployments/#pause-autoscaling
+	pausedReplicasCount, pausedAnnotationFound := instance.GetAnnotations()[PausedReplicasAnnotation]
+	if pausedAnnotationFound {
+		// Get paused replicas count from annotation metadata
+		pausedReplicasCountInt64, err := strconv.ParseInt(pausedReplicasCount, 10, 32)
+		pausedReplicasCountInt32 := int32(pausedReplicasCountInt64)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+
+		// Use the reconciler client to delete the pod that normally does the scaling
+		// This should be done first so the autoscaler does not override
+		// the scaling changes made by the operator
+		if err := r.Client.Delete(context, instance); err != nil {
+			return reconcile.Result{}, err
+		}
+
+		// scaleTargetRef is the pod or service that is being autoscaled
+		// ScaleTargetRef{} = CrossVersionObjectReference{Kind string, Name string, APIVersion string}
+		// https://github.com/kubernetes/api/blob/v0.27.4/autoscaling/v1/types.go
+		scaleTargetRef := instance.Spec.ScaleTargetRef
+
+		// ex. ParseGroupVersion("custompodautoscaler.com/v1")
+		//     = GroupVersion{Group: "custompodautoscaler.com", Version: "v1"}
+		// https://github.com/kubernetes/apimachinery/blob/v0.27.3/pkg/runtime/schema/group_version.go
+		resourceGV, err := schema.ParseGroupVersion(scaleTargetRef.APIVersion)
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+
+		targetGR := schema.GroupResource{
+			Group:    resourceGV.Group,    // ex. "custompodautoscaler.com"
+			Resource: scaleTargetRef.Kind, // ex. "CustomPodAutoscaler"
+		}
+
+		// Get the scale request for a resource (https://github.com/kubernetes/api/blob/v0.27.4/autoscaling/v1/types.go)
+		// https://github.com/kubernetes/client-go/blob/master/scale/client.go
+		scaleResource, err := r.ScalingClient.Scales(instance.Namespace).Get(context, targetGR, scaleTargetRef.Name, metav1.GetOptions{})
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+
+		// Set new target replicas
+		scaleResource.Spec.Replicas = pausedReplicasCountInt32
+
+		// Update the resource with new replica count
+		// https://github.com/kubernetes/client-go/blob/master/scale/client.go
+		_, err = r.ScalingClient.Scales(instance.Namespace).Update(context, targetGR, scaleResource, metav1.UpdateOptions{})
+		if err != nil {
+			return reconcile.Result{}, err
+		}
+
+		// Return and don't requeue
+		return reconcile.Result{}, nil
 	}
 
 	if instance.Spec.ProvisionRole == nil {
@@ -335,4 +405,51 @@ func (r *CustomPodAutoscalerReconciler) SetupWithManager(mgr ctrl.Manager) error
 		Owns(&rbacv1.Role{}, builder.WithPredicates(SecondaryPred)).
 		Owns(&rbacv1.RoleBinding{}, builder.WithPredicates(SecondaryPred)).
 		Complete(r)
+}
+
+// SetupScalingClient sets up a client for the CPA reconciler to use for manually
+// setting the replicas count of a scale target pod while the autoscaler is paused.
+// Functionality is based on the setup for a regular CPA autoscaler in main()
+func SetupScalingClient() (k8sscale.ScalesGetter, error) {
+
+	// InClusterConfig returns a config object which uses the service account
+	// kubernetes gives to pods. It's intended for clients that expect to be
+	// running inside a pod running on kubernetes. It will return ErrNotInCluster
+	// if called from a process not running in a kubernetes environment.
+	// https://github.com/kubernetes/client-go/blob/master/rest/config.go
+	clusterConfig, err := rest.InClusterConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	// NewForConfig creates a new ScalesGetter which resolves kinds
+	// to resources using the given RESTMapper, and API paths using
+	// the given dynamic.APIPathResolverFunc.
+	// https://github.com/kubernetes/client-go/blob/master/scale/client.go
+	clientset, err := kubernetes.NewForConfig(clusterConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	// GetAPIGroupResources uses the provided discovery client to gather
+	// discovery information and populate a slice of APIGroupResources
+	// APIGroupResources{Group metav1.APIGroup, VersionedResources map[string][]metav1.APIResource}
+	// https://github.com/kubernetes/client-go/blob/master/restmapper/discovery.go
+	groupResources, err := restmapper.GetAPIGroupResources(clientset.Discovery())
+	if err != nil {
+		return nil, err
+	}
+
+	// Set up a client for scaling
+	// https://github.com/kubernetes/client-go/blob/master/scale/client.go
+	scaleClient := k8sscale.New(
+		clientset.RESTClient(),
+		restmapper.NewDiscoveryRESTMapper(groupResources),
+		dynamic.LegacyAPIPathResolverFunc,
+		k8sscale.NewDiscoveryScaleKindResolver(
+			clientset.Discovery(),
+		),
+	)
+
+	return scaleClient, err
 }
