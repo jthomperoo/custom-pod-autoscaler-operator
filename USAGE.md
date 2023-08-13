@@ -119,7 +119,7 @@ access to the metrics server, so the role that is provisioned should include the
 
 ## Automatically Provisioning a Role that Supports Argo Rollouts
 
-> Note: this feature is currently unreleased.
+> Note: this feature is only available in Custom Pod Autoscaler Operator `v1.2.0` and above
 
 ```yaml
 apiVersion: custompodautoscaler.com/v1
@@ -148,3 +148,42 @@ the ability to manage [Argo Rollouts](https://argoproj.github.io/argo-rollouts/)
 
 Take not of the option inside the CPA `roleRequiresArgoRollouts: true` which informs the CPAO that the CPA requires
 the ability to manage Argo Rollouts, so the role that is provisioned should include these accesses.
+
+## Pausing autoscaling
+
+> Note: this feature is only available in Custom Pod Autoscaler Operator `v1.4.0` and above
+
+If you want to disable an autoscaler from autoscaling (e.g. during maintenance) you can do so by using the
+`v1.custompodautoscaler.com/paused-replicas` annotation on the Custom Pod Autoscaler.
+
+When this annotation is supplied the autoscaler pod will be deleted, and the resource will be set to whatever
+value is set in the annotation.
+
+For example:
+
+```yaml
+apiVersion: custompodautoscaler.com/v1
+kind: CustomPodAutoscaler
+metadata:
+  name: python-custom-autoscaler
+  annotations:
+    "v1.custompodautoscaler.com/paused-replicas": "42"
+spec:
+  template:
+    spec:
+      containers:
+      - name: python-custom-autoscaler
+        image: python-custom-autoscaler:latest
+        imagePullPolicy: Always
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: hello-kubernetes
+  config:
+    - name: interval
+      value: "10000"
+```
+
+This autoscaler will be paused, with the replica count for the resource being managed set to `42`.
+
+If you want to re-enable the autoscaler after, just remove the annotation.
