@@ -41,19 +41,22 @@ import (
 var log = logr.Discard()
 
 type fakeClient struct {
-	get         func(ctx context.Context, key client.ObjectKey, obj client.Object) error
-	list        func(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error
-	create      func(ctx context.Context, obj client.Object, opts ...client.CreateOption) error
-	delete      func(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error
-	update      func(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error
-	patch       func(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error
-	deleteAllOf func(ctx context.Context, obj client.Object, opts ...client.DeleteAllOfOption) error
-	status      func() client.StatusWriter
-	scheme      func() *runtime.Scheme
-	restMapper  func() meta.RESTMapper
+	get                 func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error
+	list                func(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error
+	create              func(ctx context.Context, obj client.Object, opts ...client.CreateOption) error
+	delete              func(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error
+	update              func(ctx context.Context, obj client.Object, opts ...client.UpdateOption) error
+	patch               func(ctx context.Context, obj client.Object, patch client.Patch, opts ...client.PatchOption) error
+	deleteAllOf         func(ctx context.Context, obj client.Object, opts ...client.DeleteAllOfOption) error
+	status              func() client.StatusWriter
+	scheme              func() *runtime.Scheme
+	restMapper          func() meta.RESTMapper
+	groupVersionKindFor func(obj runtime.Object) (schema.GroupVersionKind, error)
+	isObjectNamespaced  func(obj runtime.Object) (bool, error)
+	subResource         func(subResource string) client.SubResourceClient
 }
 
-func (f *fakeClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object) error {
+func (f *fakeClient) Get(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 	return f.get(ctx, key, obj)
 }
 
@@ -91,6 +94,18 @@ func (f *fakeClient) Scheme() *runtime.Scheme {
 
 func (f *fakeClient) RESTMapper() meta.RESTMapper {
 	return f.restMapper()
+}
+
+func (f *fakeClient) GroupVersionKindFor(obj runtime.Object) (schema.GroupVersionKind, error) {
+	return f.groupVersionKindFor(obj)
+}
+
+func (f *fakeClient) IsObjectNamespaced(obj runtime.Object) (bool, error) {
+	return f.isObjectNamespaced(obj)
+}
+
+func (f *fakeClient) SubResource(subResource string) client.SubResourceClient {
+	return f.subResource(subResource)
 }
 
 func TestReconcile(t *testing.T) {
@@ -142,7 +157,7 @@ func TestReconcile(t *testing.T) {
 				Client: func() *fakeClient {
 					fclient := &fakeClient{}
 					// Client fails to get object
-					fclient.get = func(ctx context.Context, key client.ObjectKey, obj client.Object) error {
+					fclient.get = func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 						return errors.New("Fail to get object")
 					}
 					return fclient
@@ -171,7 +186,7 @@ func TestReconcile(t *testing.T) {
 				Client: func() *fakeClient {
 					fclient := &fakeClient{}
 					// Client reports object not found
-					fclient.get = func(ctx context.Context, key client.ObjectKey, obj client.Object) error {
+					fclient.get = func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 						return apierrors.NewNotFound(schema.GroupResource{}, key.Namespace)
 					}
 					// Creation fails
@@ -204,7 +219,7 @@ func TestReconcile(t *testing.T) {
 				Client: func() *fakeClient {
 					fclient := &fakeClient{}
 					// Client reports object not found
-					fclient.get = func(ctx context.Context, key client.ObjectKey, obj client.Object) error {
+					fclient.get = func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 						return apierrors.NewNotFound(schema.GroupResource{}, key.Namespace)
 					}
 					return fclient
@@ -233,7 +248,7 @@ func TestReconcile(t *testing.T) {
 				Client: func() *fakeClient {
 					fclient := &fakeClient{}
 					// Client reports object not found
-					fclient.get = func(ctx context.Context, key client.ObjectKey, obj client.Object) error {
+					fclient.get = func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 						return apierrors.NewNotFound(schema.GroupResource{}, key.Namespace)
 					}
 					// Creation successful
@@ -265,7 +280,7 @@ func TestReconcile(t *testing.T) {
 			&k8sreconcile.KubernetesResourceReconciler{
 				Client: func() *fakeClient {
 					fclient := &fakeClient{}
-					fclient.get = func(ctx context.Context, key client.ObjectKey, obj client.Object) error {
+					fclient.get = func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 						return nil
 					}
 					return fclient
@@ -300,7 +315,7 @@ func TestReconcile(t *testing.T) {
 			&k8sreconcile.KubernetesResourceReconciler{
 				Client: func() *fakeClient {
 					fclient := &fakeClient{}
-					fclient.get = func(ctx context.Context, key client.ObjectKey, obj client.Object) error {
+					fclient.get = func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 						return nil
 					}
 					// Fail to update
@@ -332,7 +347,7 @@ func TestReconcile(t *testing.T) {
 			&k8sreconcile.KubernetesResourceReconciler{
 				Client: func() *fakeClient {
 					fclient := &fakeClient{}
-					fclient.get = func(ctx context.Context, key client.ObjectKey, obj client.Object) error {
+					fclient.get = func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 						return nil
 					}
 					// Fail to update
@@ -364,7 +379,7 @@ func TestReconcile(t *testing.T) {
 			&k8sreconcile.KubernetesResourceReconciler{
 				Client: func() *fakeClient {
 					fclient := &fakeClient{}
-					fclient.get = func(ctx context.Context, key client.ObjectKey, obj client.Object) error {
+					fclient.get = func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 						return nil
 					}
 					// Fail to delete
@@ -396,7 +411,7 @@ func TestReconcile(t *testing.T) {
 			&k8sreconcile.KubernetesResourceReconciler{
 				Client: func() *fakeClient {
 					fclient := &fakeClient{}
-					fclient.get = func(ctx context.Context, key client.ObjectKey, obj client.Object) error {
+					fclient.get = func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 						return nil
 					}
 					// Fail to delete
@@ -428,7 +443,7 @@ func TestReconcile(t *testing.T) {
 			&k8sreconcile.KubernetesResourceReconciler{
 				Client: func() *fakeClient {
 					fclient := &fakeClient{}
-					fclient.get = func(ctx context.Context, key client.ObjectKey, obj client.Object) error {
+					fclient.get = func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
 						return nil
 					}
 					// Update fails
