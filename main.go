@@ -1,5 +1,5 @@
 /*
-Copyright 2020 The Custom Pod Autoscaler Authors.
+Copyright 2024 The Custom Pod Autoscaler Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@ limitations under the License.
 package main
 
 import (
-	"flag"
 	"os"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -25,8 +24,10 @@ import (
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	custompodautoscalercomv1 "github.com/jthomperoo/custom-pod-autoscaler-operator/api/v1"
 	"github.com/jthomperoo/custom-pod-autoscaler-operator/controllers"
@@ -49,25 +50,23 @@ func init() {
 }
 
 func main() {
-	var metricsAddr string
-	var enableLeaderElection bool
-	flag.StringVar(&metricsAddr, "metrics-addr", ":8000", "The address the metric endpoint binds to.")
-	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
-		"Enable leader election for controller manager. "+
-			"Enabling this will ensure there is only one active controller manager.")
-	flag.Parse()
-
 	namespace := os.Getenv(watchNamespaceEnvVar)
 
 	ctrl.SetLogger(zap.New(zap.UseDevMode(true)))
 
+	var namespacedCache = cache.Options{}
+	if namespace != "" {
+		namespacedCache.DefaultNamespaces = map[string]cache.Config{
+			namespace: {},
+		}
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-		Scheme:             scheme,
-		MetricsBindAddress: metricsAddr,
-		Port:               9443,
-		LeaderElection:     enableLeaderElection,
-		LeaderElectionID:   "d00603b0.custompodautoscaler.com",
-		Namespace:          namespace,
+		Scheme: scheme,
+		Metrics: server.Options{
+			BindAddress: ":8000",
+		},
+		Cache: namespacedCache,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
