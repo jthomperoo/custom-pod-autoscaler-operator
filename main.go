@@ -1,5 +1,5 @@
 /*
-Copyright 2020 The Custom Pod Autoscaler Authors.
+Copyright 2024 The Custom Pod Autoscaler Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@ limitations under the License.
 package main
 
 import (
-	"flag"
 	"os"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -51,30 +50,23 @@ func init() {
 }
 
 func main() {
-	var metricsAddr string
-	var enableLeaderElection bool
-	flag.StringVar(&metricsAddr, "metrics-addr", ":8000", "The address the metric endpoint binds to.")
-	flag.BoolVar(&enableLeaderElection, "enable-leader-election", false,
-		"Enable leader election for controller manager. "+
-			"Enabling this will ensure there is only one active controller manager.")
-	flag.Parse()
-
 	namespace := os.Getenv(watchNamespaceEnvVar)
 
 	ctrl.SetLogger(zap.New(zap.UseDevMode(true)))
 
+	var namespacedCache = cache.Options{}
+	if namespace != "" {
+		namespacedCache.DefaultNamespaces = map[string]cache.Config{
+			namespace: {},
+		}
+	}
+
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme: scheme,
 		Metrics: server.Options{
-			BindAddress: metricsAddr,
+			BindAddress: ":8000",
 		},
-		LeaderElection:   enableLeaderElection,
-		LeaderElectionID: "d00603b0.custompodautoscaler.com",
-		Cache: cache.Options{
-			DefaultNamespaces: map[string]cache.Config{
-				namespace: {},
-			},
-		},
+		Cache: namespacedCache,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
