@@ -126,6 +126,7 @@ func TestReconcile(t *testing.T) {
 		obj             metav1.Object
 		shouldProvision bool
 		updatable       bool
+		kind            string
 	}{
 		{
 			"Fail to set controller reference",
@@ -148,6 +149,7 @@ func TestReconcile(t *testing.T) {
 			},
 			true,
 			false,
+			"v1/Pod",
 		},
 		{
 			"Fail to get object",
@@ -177,6 +179,7 @@ func TestReconcile(t *testing.T) {
 			},
 			true,
 			false,
+			"v1/Pod",
 		},
 		{
 			"Fail to create object",
@@ -210,6 +213,7 @@ func TestReconcile(t *testing.T) {
 			},
 			true,
 			false,
+			"v1/Pod",
 		},
 		{
 			"Success, no object found and don't provision a new one",
@@ -239,6 +243,7 @@ func TestReconcile(t *testing.T) {
 			},
 			false,
 			false,
+			"v1/Pod",
 		},
 		{
 			"Successfully create new object",
@@ -272,6 +277,7 @@ func TestReconcile(t *testing.T) {
 			},
 			true,
 			false,
+			"v1/Pod",
 		},
 		{
 			"Object already exists; Pod being deleted, skip updating",
@@ -307,6 +313,7 @@ func TestReconcile(t *testing.T) {
 			},
 			true,
 			false,
+			"v1/Pod",
 		},
 		{
 			"Object already exists; should be provisioned and is updatable, fail to update",
@@ -339,6 +346,7 @@ func TestReconcile(t *testing.T) {
 			},
 			true,
 			true,
+			"v1/ServiceAccount",
 		},
 		{
 			"Object already exists; should be provisioned and is updatable, update success",
@@ -371,6 +379,7 @@ func TestReconcile(t *testing.T) {
 			},
 			true,
 			true,
+			"v1/ServiceAccount",
 		},
 		{
 			"Object already exists; should be provisioned and isn't updatable, fail to delete",
@@ -403,6 +412,7 @@ func TestReconcile(t *testing.T) {
 			},
 			true,
 			false,
+			"v1/ServiceAccount",
 		},
 		{
 			"Object already exists; should be provisioned and isn't updatable, delete success",
@@ -435,6 +445,7 @@ func TestReconcile(t *testing.T) {
 			},
 			true,
 			false,
+			"v1/ServiceAccount",
 		},
 		{
 			"Object already exists with owner not set, fail to update",
@@ -476,6 +487,7 @@ func TestReconcile(t *testing.T) {
 			},
 			false,
 			false,
+			"v1/ServiceAccount",
 		},
 		{
 			"Object already exists with owner not set, successful update",
@@ -521,6 +533,7 @@ func TestReconcile(t *testing.T) {
 			},
 			false,
 			false,
+			"v1/Pod",
 		},
 		{
 			"Object already exists with owner set",
@@ -582,6 +595,7 @@ func TestReconcile(t *testing.T) {
 			},
 			false,
 			false,
+			"v1/Pod",
 		},
 		{
 			"Service account already exists, retain secret",
@@ -643,11 +657,12 @@ func TestReconcile(t *testing.T) {
 			},
 			true,
 			true,
+			"v1/ServiceAccount",
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.description, func(t *testing.T) {
-			result, err := test.reconciler.Reconcile(test.logger, test.instance, test.obj, test.shouldProvision, test.updatable)
+			result, err := test.reconciler.Reconcile(test.logger, test.instance, test.obj, test.shouldProvision, test.updatable, test.kind)
 			if !cmp.Equal(err, test.expectedErr, equateErrorMessage) {
 				t.Errorf("error mismatch (-want +got):\n%s", cmp.Diff(test.expectedErr, err, equateErrorMessage))
 				return

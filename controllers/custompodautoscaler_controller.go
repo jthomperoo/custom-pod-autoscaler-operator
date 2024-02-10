@@ -60,6 +60,7 @@ type K8sReconciler interface {
 		obj metav1.Object,
 		shouldProvision bool,
 		updateable bool,
+		kind string,
 	) (reconcile.Result, error)
 	PodCleanup(reqLogger logr.Logger, instance *custompodautoscalercomv1.CustomPodAutoscaler) error
 }
@@ -125,6 +126,11 @@ func (r *CustomPodAutoscalerReconciler) Reconcile(context context.Context, req c
 		}
 		// Error reading the object - requeue the request.
 		return reconcile.Result{}, err
+	}
+
+	if instance.DeletionTimestamp != nil {
+		reqLogger.Info("Custom Pod Autoscaler marked for deletion, ignoring reconcilation of dependencies ", "Kind", "custompodautoscaler.com/v1/CustomPodAutoscaler", "Namespace", instance.GetNamespace(), "Name", instance.GetName())
+		return reconcile.Result{}, nil
 	}
 
 	// Check the presence of "v1.custompodautoscaler.com/paused-replicas" annotation on the CPA pod
@@ -231,7 +237,7 @@ func (r *CustomPodAutoscalerReconciler) Reconcile(context context.Context, req c
 		},
 	}
 
-	result, err := r.KubernetesResourceReconciler.Reconcile(reqLogger, instance, serviceAccount, *instance.Spec.ProvisionServiceAccount, true)
+	result, err := r.KubernetesResourceReconciler.Reconcile(reqLogger, instance, serviceAccount, *instance.Spec.ProvisionServiceAccount, true, "v1/ServiceAccount")
 	if err != nil {
 		return result, err
 	}
@@ -272,7 +278,7 @@ func (r *CustomPodAutoscalerReconciler) Reconcile(context context.Context, req c
 		})
 	}
 
-	result, err = r.KubernetesResourceReconciler.Reconcile(reqLogger, instance, role, *instance.Spec.ProvisionRole, true)
+	result, err = r.KubernetesResourceReconciler.Reconcile(reqLogger, instance, role, *instance.Spec.ProvisionRole, true, "v1/Role")
 	if err != nil {
 		return result, err
 	}
@@ -297,7 +303,7 @@ func (r *CustomPodAutoscalerReconciler) Reconcile(context context.Context, req c
 			APIGroup: "rbac.authorization.k8s.io",
 		},
 	}
-	result, err = r.KubernetesResourceReconciler.Reconcile(reqLogger, instance, roleBinding, *instance.Spec.ProvisionRoleBinding, true)
+	result, err = r.KubernetesResourceReconciler.Reconcile(reqLogger, instance, roleBinding, *instance.Spec.ProvisionRoleBinding, true, "v1/RoleBinding")
 	if err != nil {
 		return result, err
 	}
@@ -352,7 +358,7 @@ func (r *CustomPodAutoscalerReconciler) Reconcile(context context.Context, req c
 		ObjectMeta: metav1.ObjectMeta(objectMeta),
 		Spec:       corev1.PodSpec(podSpec),
 	}
-	result, err = r.KubernetesResourceReconciler.Reconcile(reqLogger, instance, pod, *instance.Spec.ProvisionPod, false)
+	result, err = r.KubernetesResourceReconciler.Reconcile(reqLogger, instance, pod, *instance.Spec.ProvisionPod, false, "v1/Pod")
 	if err != nil {
 		return result, err
 	}

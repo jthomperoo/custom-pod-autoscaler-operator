@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"sigs.k8s.io/controller-runtime/pkg/event"
 
@@ -101,6 +102,7 @@ type fakek8sReconciler struct {
 		obj metav1.Object,
 		shouldProvision bool,
 		updatable bool,
+		kind string,
 	) (reconcile.Result, error)
 
 	podCleanup func(reqLogger logr.Logger, instance *custompodautoscalercomv1.CustomPodAutoscaler) error
@@ -112,8 +114,9 @@ func (f *fakek8sReconciler) Reconcile(
 	obj metav1.Object,
 	shouldProvision bool,
 	updatable bool,
+	kind string,
 ) (reconcile.Result, error) {
-	return f.reconcile(reqLogger, instance, obj, shouldProvision, updatable)
+	return f.reconcile(reqLogger, instance, obj, shouldProvision, updatable, kind)
 }
 
 func (f *fakek8sReconciler) PodCleanup(reqLogger logr.Logger, instance *custompodautoscalercomv1.CustomPodAutoscaler) error {
@@ -283,6 +286,7 @@ func TestReconcile(t *testing.T) {
 					obj metav1.Object,
 					shouldProvision bool,
 					updatable bool,
+					kind string,
 				) (reconcile.Result, error) {
 					_, ok := obj.(*corev1.ServiceAccount)
 					if ok {
@@ -329,6 +333,7 @@ func TestReconcile(t *testing.T) {
 					obj metav1.Object,
 					shouldProvision bool,
 					updatable bool,
+					kind string,
 				) (reconcile.Result, error) {
 					_, ok := obj.(*rbacv1.Role)
 					if ok {
@@ -375,6 +380,7 @@ func TestReconcile(t *testing.T) {
 					obj metav1.Object,
 					shouldProvision bool,
 					updatable bool,
+					kind string,
 				) (reconcile.Result, error) {
 					_, ok := obj.(*rbacv1.RoleBinding)
 					if ok {
@@ -419,6 +425,7 @@ func TestReconcile(t *testing.T) {
 					obj metav1.Object,
 					shouldProvision bool,
 					updatable bool,
+					kind string,
 				) (reconcile.Result, error) {
 					_, ok := obj.(*corev1.Pod)
 					if ok {
@@ -476,6 +483,7 @@ func TestReconcile(t *testing.T) {
 					obj metav1.Object,
 					shouldProvision bool,
 					updatable bool,
+					kind string,
 				) (reconcile.Result, error) {
 					pod, ok := obj.(*corev1.Pod)
 					if ok {
@@ -553,6 +561,7 @@ func TestReconcile(t *testing.T) {
 					obj metav1.Object,
 					shouldProvision bool,
 					updatable bool,
+					kind string,
 				) (reconcile.Result, error) {
 					pod, ok := obj.(*corev1.Pod)
 					if ok {
@@ -644,6 +653,7 @@ func TestReconcile(t *testing.T) {
 					obj metav1.Object,
 					shouldProvision bool,
 					updatable bool,
+					kind string,
 				) (reconcile.Result, error) {
 					pod, ok := obj.(*corev1.Pod)
 					if ok {
@@ -737,6 +747,7 @@ func TestReconcile(t *testing.T) {
 					obj metav1.Object,
 					shouldProvision bool,
 					updatable bool,
+					kind string,
 				) (reconcile.Result, error) {
 					pod, ok := obj.(*corev1.Pod)
 					if ok {
@@ -819,6 +830,7 @@ func TestReconcile(t *testing.T) {
 					obj metav1.Object,
 					shouldProvision bool,
 					updatable bool,
+					kind string,
 				) (reconcile.Result, error) {
 					pod, ok := obj.(*corev1.Pod)
 					if ok {
@@ -900,6 +912,7 @@ func TestReconcile(t *testing.T) {
 					obj metav1.Object,
 					shouldProvision bool,
 					updatable bool,
+					kind string,
 				) (reconcile.Result, error) {
 					return reconcile.Result{}, nil
 				}
@@ -957,6 +970,7 @@ func TestReconcile(t *testing.T) {
 					obj metav1.Object,
 					shouldProvision bool,
 					updatable bool,
+					kind string,
 				) (reconcile.Result, error) {
 					return reconcile.Result{}, nil
 				}
@@ -1144,6 +1158,58 @@ func TestReconcile(t *testing.T) {
 							Verb:     "update",
 							Reaction: func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
 								return true, nil, errors.New(`Failed Update API call`)
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			"Successfully reconcile when marked for deletion as part of foreground cascade delete",
+			reconcile.Result{},
+			nil,
+			func() *fakeClient {
+				fclient := &fakeClient{}
+				fclient.get = func(ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+					cpa, _ := obj.(*custompodautoscalercomv1.CustomPodAutoscaler)
+					cpa.ObjectMeta = metav1.ObjectMeta{
+						Name:      "test",
+						Namespace: "test-namespace",
+						DeletionTimestamp: &metav1.Time{
+							Time: time.Time{},
+						},
+						Finalizers: []string{
+							"foregroundDeletion",
+						},
+					}
+					return nil
+				}
+				return fclient
+			}(),
+			reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name:      "test",
+					Namespace: "test-namespace",
+				},
+			},
+			func() *fakek8sReconciler {
+				return &fakek8sReconciler{}
+			}(),
+			&scaleFake.FakeScaleClient{
+				Fake: k8stesting.Fake{
+					ReactionChain: []k8stesting.Reactor{
+						&k8stesting.SimpleReactor{
+							Resource: "*",
+							Verb:     "get",
+							Reaction: func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+								return true, &autoscalingv1.Scale{}, nil
+							},
+						},
+						&k8stesting.SimpleReactor{
+							Resource: "*",
+							Verb:     "update",
+							Reaction: func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+								return true, &autoscalingv1.Scale{}, nil
 							},
 						},
 					},

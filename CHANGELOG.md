@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Fixed
+- Bug that caused foreground cascade deletion to send the operator into a loop
+([#110](https://github.com/jthomperoo/custom-pod-autoscaler-operator/issues/110)).
+### Changed
+- Added Kind information into logging messages to help debug which resources are being reconciled.
 
 ## [v1.4.0] - 2023-08-13
 ### Added

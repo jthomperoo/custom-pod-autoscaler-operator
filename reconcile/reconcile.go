@@ -48,6 +48,7 @@ func (k *KubernetesResourceReconciler) Reconcile(
 	obj metav1.Object,
 	shouldProvision bool,
 	updatable bool,
+	kind string,
 ) (reconcile.Result, error) {
 	runtimeObj := obj.(client.Object)
 	// Set CustomPodAutoscaler instance as the owner and controller
@@ -65,12 +66,12 @@ func (k *KubernetesResourceReconciler) Reconcile(
 		}
 		// Object does not exist
 		if !shouldProvision {
-			reqLogger.Info("Object not found, no provisioning of resource ", "Namespace", obj.GetNamespace(), "Name", obj.GetName())
+			reqLogger.Info("Object not found, no provisioning of resource ", "Kind", kind, "Namespace", obj.GetNamespace(), "Name", obj.GetName())
 			// Should not provision a new object, wait for existing
 			return reconcile.Result{}, nil
 		}
 		// Should provision, create a new object
-		reqLogger.Info("Creating a new k8s object ", "Namespace", obj.GetNamespace(), "Name", obj.GetName())
+		reqLogger.Info("Creating a new k8s object ", "Kind", kind, "Namespace", obj.GetNamespace(), "Name", obj.GetName())
 		err = k.Client.Create(context.Background(), runtimeObj)
 		if err != nil {
 			return reconcile.Result{}, err
@@ -84,7 +85,7 @@ func (k *KubernetesResourceReconciler) Reconcile(
 		existingObject.GetObjectKind().GroupVersionKind().Kind == "Pod" {
 		pod := existingObject.(*corev1.Pod)
 		if !pod.ObjectMeta.DeletionTimestamp.IsZero() {
-			reqLogger.Info("Pod currently being deleted ", "Namespace", obj.GetNamespace(), "Name", obj.GetName())
+			reqLogger.Info("Pod currently being deleted ", "Kind", kind, "Namespace", obj.GetNamespace(), "Name", obj.GetName())
 			return reconcile.Result{}, nil
 		}
 	}
@@ -93,11 +94,11 @@ func (k *KubernetesResourceReconciler) Reconcile(
 	if shouldProvision {
 		// Only update if object should be provisioned
 		if updatable {
-			reqLogger.Info("Updating k8s object ", "Namespace", obj.GetNamespace(), "Name", obj.GetName())
+			reqLogger.Info("Updating k8s object ", "Kind", kind, "Namespace", obj.GetNamespace(), "Name", obj.GetName())
 			if existingObject.GetObjectKind().GroupVersionKind().Group == "" &&
 				existingObject.GetObjectKind().GroupVersionKind().Version == "v1" &&
 				existingObject.GetObjectKind().GroupVersionKind().Kind == "ServiceAccount" {
-				reqLogger.Info("Service Account update, retaining secrets ", "Namespace", obj.GetNamespace(), "Name", obj.GetName())
+				reqLogger.Info("Service Account update, retaining secrets ", "Kind", kind, "Namespace", obj.GetNamespace(), "Name", obj.GetName())
 				serviceAccount := existingObject.(*corev1.ServiceAccount)
 				updatedServiceAccount := runtimeObj.(*corev1.ServiceAccount)
 				updatedServiceAccount.Secrets = serviceAccount.Secrets
@@ -110,7 +111,7 @@ func (k *KubernetesResourceReconciler) Reconcile(
 			// Successful update, don't requeue
 			return reconcile.Result{}, nil
 		}
-		reqLogger.Info("Deleting k8s object ", "Namespace", obj.GetNamespace(), "Name", obj.GetName())
+		reqLogger.Info("Deleting k8s object ", "Kind", kind, "Namespace", obj.GetNamespace(), "Name", obj.GetName())
 
 		// If object can't be updated, delete and make new
 		err = k.Client.Delete(context.Background(), existingObject)
@@ -135,7 +136,7 @@ func (k *KubernetesResourceReconciler) Reconcile(
 	}
 
 	if !cpaOwner {
-		reqLogger.Info("CPA not set as owner, updating owner reference", "Namespace", obj.GetNamespace(), "Name", obj.GetName())
+		reqLogger.Info("CPA not set as owner, updating owner reference", "Kind", kind, "Namespace", obj.GetNamespace(), "Name", obj.GetName())
 		ownerReferences = append(ownerReferences, metav1.OwnerReference{
 			APIVersion: instance.APIVersion,
 			Kind:       instance.Kind,
@@ -150,7 +151,7 @@ func (k *KubernetesResourceReconciler) Reconcile(
 		return reconcile.Result{}, nil
 	}
 
-	reqLogger.Info("Skip reconcile: k8s object already exists with expected owner", "Namespace", obj.GetNamespace(), "Name", obj.GetName())
+	reqLogger.Info("Skip reconcile: k8s object already exists with expected owner", "Kind", kind, "Namespace", obj.GetNamespace(), "Name", obj.GetName())
 	return reconcile.Result{}, nil
 }
 
@@ -208,6 +209,6 @@ func (k *KubernetesResourceReconciler) PodCleanup(reqLogger logr.Logger, instanc
 }
 
 func (k *KubernetesResourceReconciler) deleteOrphan(reqLogger logr.Logger, pod corev1.Pod) error {
-	reqLogger.Info("Found orphaned Pod (owned by CPA but not currently defined), deleting", "Namespace", pod.GetNamespace(), "Name", pod.GetName())
+	reqLogger.Info("Found orphaned Pod (owned by CPA but not currently defined), deleting", "Kind", pod.GetObjectKind().GroupVersionKind(), "Namespace", pod.GetNamespace(), "Name", pod.GetName())
 	return k.Client.Delete(context.Background(), &pod)
 }
